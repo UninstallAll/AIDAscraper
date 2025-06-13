@@ -14,6 +14,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from starlette.responses import JSONResponse
 
+# 导入自定义路由模块
+from . import websites
+
 # 创建FastAPI应用
 app = FastAPI(
     title="艺术数据爬虫API",
@@ -36,6 +39,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# 添加网站管理路由
+app.include_router(websites.router)
 
 # 模型定义
 class ArtistBase(BaseModel):

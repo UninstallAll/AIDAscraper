@@ -31,6 +31,10 @@
               <el-icon><Setting /></el-icon>
               <span>Configuration</span>
             </el-menu-item>
+            <el-menu-item index="/website-manager">
+              <el-icon><Management /></el-icon>
+              <span>Website Manager</span>
+            </el-menu-item>
           </el-sub-menu>
           
           <el-sub-menu index="/data">
@@ -94,7 +98,8 @@ import {
   User, 
   Picture,
   Fold,
-  ArrowDown
+  ArrowDown,
+  Management
 } from '@element-plus/icons-vue';
 
 const isCollapsed = ref(false);

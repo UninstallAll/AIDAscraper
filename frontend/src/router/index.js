@@ -6,6 +6,7 @@ const ArtistList = () => import('../views/ArtistList.vue')
 const ArtworkList = () => import('../views/ArtworkList.vue')
 const ScraperStatus = () => import('../views/ScraperStatus.vue')
 const ScraperConfig = () => import('../views/ScraperConfig.vue')
+const WebsiteManager = () => import('../views/WebsiteManager.vue')
 const Settings = () => import('../views/Settings.vue')
 const NotFound = () => import('../views/NotFound.vue')
 
@@ -43,6 +44,12 @@ const routes = [
     name: 'ScraperConfig',
     component: ScraperConfig,
     meta: { title: 'Scraper Configuration' }
+  },
+  {
+    path: '/website-manager',
+    name: 'WebsiteManager',
+    component: WebsiteManager,
+    meta: { title: 'Website Manager' }
   },
   {
     path: '/settings',

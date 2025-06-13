@@ -1,16 +1,17 @@
 import axios from 'axios'
 
 // 创建axios实例
-const api = axios.create({
-  baseURL: '/api',
+const apiClient = axios.create({
+  baseURL: 'http://localhost:8000',  // 移除/api前缀，因为后端路由已经包含了它
   timeout: 10000,
   headers: {
-    'Content-Type': 'application/json'
+    'Content-Type': 'application/json',
+    'Accept': 'application/json'
   }
 })
 
 // 请求拦截器
-api.interceptors.request.use(
+apiClient.interceptors.request.use(
   config => {
     // 在发送请求前做些什么
     return config
@@ -22,7 +23,7 @@ api.interceptors.request.use(
 )
 
 // 响应拦截器
-api.interceptors.response.use(
+apiClient.interceptors.response.use(
   response => {
     // 对响应数据做些什么
     const res = response.data
@@ -43,67 +44,61 @@ api.interceptors.response.use(
   }
 )
 
-// API请求函数
-export default {
-  // 爬虫任务相关API
-  scrapers: {
-    // 获取所有爬虫任务
-    getTasks() {
-      return api.get('/scrapers/tasks')
-    },
-    
-    // 创建新爬虫任务
-    createTask(data) {
-      return api.post('/scrapers/tasks', data)
-    },
-    
-    // 获取任务详情
-    getTaskDetail(id) {
-      return api.get(`/scrapers/tasks/${id}`)
-    },
-    
-    // 控制爬虫任务
-    controlTask(id, action) {
-      return api.put(`/scrapers/tasks/${id}/control`, { action })
-    }
+// 网站管理API
+export const websiteApi = {
+  // 获取所有网站列表
+  list: async () => {
+    const response = await apiClient.get('/websites/')
+    return response.data
   },
-  
-  // 艺术家相关API
-  artists: {
-    // 获取艺术家列表
-    list(params) {
-      return api.get('/artists', { params })
-    },
-    
-    // 获取艺术家详情
-    getDetail(id) {
-      return api.get(`/artists/${id}`)
-    },
-    
-    // 获取艺术家作品
-    getArtworks(id) {
-      return api.get(`/artists/${id}/artworks`)
-    }
+
+  // 获取单个网站信息
+  get: async (id) => {
+    const response = await apiClient.get(`/websites/${id}`)
+    return response.data
   },
-  
-  // 艺术品相关API
-  artworks: {
-    // 获取艺术品列表
-    list(params) {
-      return api.get('/artworks', { params })
-    },
-    
-    // 获取艺术品详情
-    getDetail(id) {
-      return api.get(`/artworks/${id}`)
-    }
+
+  // 添加新网站
+  add: async (website) => {
+    const response = await apiClient.post('/websites/', website)
+    return response.data
   },
-  
-  // 数据统计API
-  statistics: {
-    // 获取控制面板数据
-    getDashboard() {
-      return api.get('/statistics/dashboard')
-    }
+
+  // 删除网站
+  delete: async (id) => {
+    const response = await apiClient.delete(`/websites/${id}`)
+    return response.data
+  },
+
+  // 检查网站是否有爬虫实现
+  checkScraper: async (id) => {
+    const response = await apiClient.get(`/websites/${id}/has_scraper`)
+    return response.data
+  },
+
+  // 创建爬虫
+  createScraper: async (websiteId, scraperName) => {
+    const response = await apiClient.post(`/websites/${websiteId}/create_scraper`, {
+      website_id: websiteId,
+      scraper_name: scraperName
+    })
+    return response.data
+  },
+
+  // 运行爬虫
+  runScraper: async (params) => {
+    const response = await apiClient.post('/websites/run_scraper', params)
+    return response.data
+  },
+
+  // 获取所有可用爬虫
+  availableScrapers: async () => {
+    const response = await apiClient.get('/websites/scrapers/available')
+    return response.data
   }
+}
+
+// 导出所有API服务
+export default {
+  websites: websiteApi
 } 
