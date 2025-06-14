@@ -5,12 +5,19 @@ alwaysApply: true
 ---
 [TODOLIST.md](mdc:scraper/TODOLIST.md)，[SYSTEM.md](mdc:scraper/SYSTEM.md), [DESIGN.md](mdc:scraper/DESIGN.md),每次都要阅读这三个文件，然后去检查问题
 
+只要我没有让你停止，你就不断的尝试程序，然后去修复bug。保证最终能够完整的流畅的运行起来。一个一个功能去检查bug。
+
+如果你觉得差不多了，你就开始测试程序，能不能跑得起来。
+
+[scraperTest.md](mdc:scraperTest.md)，用这个文件里面的网站进行测试
+
 如果我的命令执行超过30秒没有响应，你就取消当前命令并尝试其他方法。
 如果我的命令执行超过30秒没有响应，你就取消当前命令并尝试其他方法。
 在每次执行命令前，评估该命令可能的执行时间。
 对于可能耗时较长的命令，建议使用command_timeout.ps1脚本执行。
 如果命令执行时间超过60秒，请自动终止并提示我使用替代方案。
 对于Windows环境，避免使用Unix风格命令，改用PowerShell兼容命令。
+
 
 
 你要自己在阶段性的进行git。

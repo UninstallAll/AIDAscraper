@@ -24,7 +24,7 @@
 | 7 | Scrapy 爬虫基类 & Pipeline | Backend | DONE | 3 | 本地磁盘输出 JSON |
 | 8 | Playwright 集成示例 Spider | Backend | DONE | 2 | 登录 + 动态加载 |
 | 9 | Celery Worker & Job 队列 | Backend | DONE | 1 | 支持失败重试 |
-| 10 | E2E Demo：抓取 1 个站点并写 DB | Team | PENDING | 2 | 成功数据行 > 50 |
+| 10 | E2E Demo：抓取 1 个站点并写 DB | Team | DONE | 2 | 成功数据行 > 50 |
 
 ## Sprint 2 – 管理 UI & 任务监控 (2 周)
 | # | Task | Owner | Status | Est (d) |

@@ -1,112 +1,217 @@
 """
-Scrapy Pipeline
+Scrapy Pipeline模块
 """
 import json
 import logging
 import os
-from datetime import datetime
 from typing import Dict, Any
 
-from app.tasks.scraper_tasks import update_job_progress
+from sqlalchemy.orm import Session
 
-# 设置日志
-logger = logging.getLogger(__name__)
+from app.db.database import SessionLocal
+from app import services
 
 
 class JsonWriterPipeline:
     """
-    将爬取的数据写入JSON文件
+    将爬取的数据写入JSON文件的Pipeline
+    """
+    
+    def __init__(self, output_dir: str = "output"):
+        """
+        初始化Pipeline
+        
+        Args:
+            output_dir: 输出目录
+        """
+        self.output_dir = output_dir
+        self.items = []
+        self.logger = logging.getLogger(__name__)
+    
+    @classmethod
+    def from_crawler(cls, crawler):
+        """
+        从爬虫创建Pipeline
+        
+        Args:
+            crawler: 爬虫
+            
+        Returns:
+            JsonWriterPipeline: Pipeline实例
+        """
+        # 获取设置
+        output_dir = crawler.settings.get("OUTPUT_DIR", "output")
+        return cls(output_dir=output_dir)
+    
+    def open_spider(self, spider):
+        """
+        爬虫开始时调用
+        
+        Args:
+            spider: 爬虫
+        """
+        # 确保输出目录存在
+        os.makedirs(self.output_dir, exist_ok=True)
+        self.logger.info(f"JsonWriterPipeline启动，输出目录: {self.output_dir}")
+    
+    def process_item(self, item: Dict[str, Any], spider):
+        """
+        处理爬取的数据项
+        
+        Args:
+            item: 数据项
+            spider: 爬虫
+            
+        Returns:
+            Dict[str, Any]: 处理后的数据项
+        """
+        self.items.append(dict(item))
+        return item
+    
+    def close_spider(self, spider):
+        """
+        爬虫结束时调用
+        
+        Args:
+            spider: 爬虫
+        """
+        # 写入JSON文件
+        output_file = os.path.join(self.output_dir, f"{spider.name}_items.json")
+        with open(output_file, "w", encoding="utf-8") as f:
+            json.dump(self.items, f, ensure_ascii=False, indent=2)
+        
+        self.logger.info(f"爬取完成，共写入 {len(self.items)} 条数据到 {output_file}")
+
+
+class DatabasePipeline:
+    """
+    将爬取的数据写入数据库的Pipeline
     """
     
     def __init__(self):
         """
         初始化Pipeline
         """
-        self.items = []
-        self.item_count = 0
-        self.saved_count = 0
-        self.output_dir = "output"
-        
-        # 创建输出目录
-        os.makedirs(self.output_dir, exist_ok=True)
+        self.db = None
+        self.job_id = None
+        self.site_config_id = None
+        self.tenant_id = None
+        self.items_count = 0
+        self.logger = logging.getLogger(__name__)
     
-    def process_item(self, item: Dict[str, Any], spider) -> Dict[str, Any]:
+    @classmethod
+    def from_crawler(cls, crawler):
         """
-        处理爬取的数据
+        从爬虫创建Pipeline
         
         Args:
-            item: 爬取的数据项
-            spider: 爬虫实例
+            crawler: 爬虫
+            
+        Returns:
+            DatabasePipeline: Pipeline实例
+        """
+        return cls()
+    
+    def open_spider(self, spider):
+        """
+        爬虫开始时调用
+        
+        Args:
+            spider: 爬虫
+        """
+        # 获取数据库会话
+        self.db = SessionLocal()
+        
+        # 获取爬虫的任务ID和站点配置ID
+        self.job_id = getattr(spider, "job_id", None)
+        self.site_config_id = getattr(spider, "site_config", None).id
+        self.tenant_id = getattr(spider, "site_config", None).tenant_id
+        
+        if not self.job_id or not self.site_config_id or not self.tenant_id:
+            self.logger.error("缺少必要的任务ID、站点配置ID或租户ID，无法写入数据库")
+            return
+        
+        self.logger.info(f"DatabasePipeline启动，任务ID: {self.job_id}, 站点配置ID: {self.site_config_id}")
+    
+    def process_item(self, item: Dict[str, Any], spider):
+        """
+        处理爬取的数据项
+        
+        Args:
+            item: 数据项
+            spider: 爬虫
             
         Returns:
             Dict[str, Any]: 处理后的数据项
         """
-        # 添加时间戳
-        item['timestamp'] = datetime.now().isoformat()
+        if not self.db or not self.job_id or not self.site_config_id or not self.tenant_id:
+            return item
         
-        # 保存到内存
-        self.items.append(item)
-        self.item_count += 1
-        
-        # 每50个项目保存一次
-        if self.item_count % 50 == 0:
-            self._save_items(spider)
+        try:
+            # 提取必要字段
+            url = item.get("url")
+            page_type = item.get("page_type", "unknown")
+            title = item.get("title") or item.get("name")
+            
+            # 提取内容
+            content = None
+            if "description" in item:
+                content = item["description"]
+            elif "biography" in item:
+                content = item["biography"]
+            
+            # 创建或更新数据项
+            db_item = services.scraped_item.create_or_update(
+                db=self.db,
+                url=url,
+                page_type=page_type,
+                title=title,
+                content=content,
+                data=dict(item),
+                job_id=self.job_id,
+                site_config_id=self.site_config_id,
+                tenant_id=self.tenant_id
+            )
+            
+            self.items_count += 1
             
             # 更新任务进度
-            if hasattr(spider, 'job_id'):
-                # 计算进度（假设每个任务最多抓取1000个项目）
-                progress = min(int(self.item_count / 1000 * 100), 99)
-                update_job_progress.delay(
-                    job_id=spider.job_id,
-                    progress=progress,
-                    items_scraped=self.item_count,
-                    items_saved=self.saved_count
+            if self.items_count % 10 == 0:  # 每10条更新一次
+                services.job.update_status(
+                    db=self.db,
+                    job_id=self.job_id,
+                    status_update={
+                        "items_scraped": self.items_count,
+                        "items_saved": self.items_count
+                    }
                 )
-        
-        return item
+            
+            return item
+        except Exception as e:
+            self.logger.exception(f"写入数据库失败: {e}")
+            return item
     
-    def close_spider(self, spider) -> None:
+    def close_spider(self, spider):
         """
-        爬虫关闭时的处理
+        爬虫结束时调用
         
         Args:
-            spider: 爬虫实例
+            spider: 爬虫
         """
-        # 保存剩余的项目
-        if self.items:
-            self._save_items(spider)
-    
-    def _save_items(self, spider) -> None:
-        """
-        保存爬取的数据到JSON文件
-        
-        Args:
-            spider: 爬虫实例
-        """
-        if not self.items:
-            return
-        
-        # 生成文件名
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        tenant_id = getattr(spider.site_config, 'tenant_id', 'default')
-        job_id = getattr(spider, 'job_id', 'unknown')
-        
-        # 创建租户目录
-        tenant_dir = os.path.join(self.output_dir, tenant_id)
-        os.makedirs(tenant_dir, exist_ok=True)
-        
-        # 创建任务目录
-        job_dir = os.path.join(tenant_dir, str(job_id))
-        os.makedirs(job_dir, exist_ok=True)
-        
-        # 保存到文件
-        filename = os.path.join(job_dir, f"items_{timestamp}_{self.saved_count}.json")
-        with open(filename, 'w', encoding='utf-8') as f:
-            json.dump(self.items, f, ensure_ascii=False, indent=2)
-        
-        # 更新计数
-        self.saved_count += len(self.items)
-        logger.info(f"已保存 {len(self.items)} 个项目到 {filename}")
-        
-        # 清空内存中的项目
-        self.items = [] 
+        if self.db and self.job_id:
+            try:
+                # 更新任务状态
+                services.job.update_status(
+                    db=self.db,
+                    job_id=self.job_id,
+                    status_update={
+                        "items_scraped": self.items_count,
+                        "items_saved": self.items_count
+                    }
+                )
+                
+                self.logger.info(f"爬取完成，共写入 {self.items_count} 条数据到数据库")
+            except Exception as e:
+                self.logger.exception(f"更新任务状态失败: {e}")
+            finally:
+                self.db.close() 

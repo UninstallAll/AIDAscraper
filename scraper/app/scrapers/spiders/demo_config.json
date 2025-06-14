@@ -1,0 +1,22 @@
+{
+  "name": "艺术网站演示配置",
+  "url": "https://www.wikiart.org",
+  "description": "爬取WikiArt网站的艺术家、作品和流派信息",
+  "requires_login": false,
+  "start_urls": [
+    "https://www.wikiart.org/en/artists-by-century/21",
+    "https://www.wikiart.org/en/artists-by-century/20",
+    "https://www.wikiart.org/en/paintings-by-genre/portrait"
+  ],
+  "allowed_domains": [
+    "www.wikiart.org",
+    "wikiart.org"
+  ],
+  "use_playwright": true,
+  "config": {
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+    "max_pages": 3,
+    "max_items_per_category": 50,
+    "scroll_delay": 1000
+  }
+} 

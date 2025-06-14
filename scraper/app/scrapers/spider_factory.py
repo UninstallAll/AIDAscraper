@@ -1,31 +1,75 @@
 """
-爬虫工厂类
+爬虫工厂模块
 """
-from typing import Optional
+import logging
+from typing import Type
+
+from scrapy import Spider
 
 from app.models.site import SiteConfig
 from app.scrapers.base_spider import BaseSpider
 from app.scrapers.playwright_spider import PlaywrightSpider
+from app.scrapers.spiders.art_gallery_spider import ArtGallerySpider
+from app.scrapers.spiders.artsy_spider import ArtsySpider
+from app.scrapers.spiders.wikiart_spider import WikiArtSpider
+
+# 设置日志
+logger = logging.getLogger(__name__)
 
 
 class SpiderFactory:
     """
-    爬虫工厂类，用于根据配置创建不同类型的爬虫
+    爬虫工厂类，用于创建爬虫实例
     """
     
     @staticmethod
-    def create_spider(site_config: SiteConfig, job_id: Optional[int] = None) -> BaseSpider:
+    def create_spider(site_config: SiteConfig, job_id: int) -> Spider:
         """
-        创建爬虫
+        创建爬虫实例
         
         Args:
             site_config: 站点配置
             job_id: 任务ID
             
         Returns:
-            BaseSpider: 爬虫实例
+            Spider: 爬虫实例
         """
-        if site_config.use_playwright:
-            return PlaywrightSpider(site_config=site_config, job_id=job_id)
+        # 根据URL或名称选择爬虫类
+        spider_class = SpiderFactory._get_spider_class(site_config)
+        
+        # 创建爬虫实例
+        return spider_class(
+            site_config=site_config,
+            job_id=job_id
+        )
+    
+    @staticmethod
+    def _get_spider_class(site_config: SiteConfig) -> Type[Spider]:
+        """
+        根据站点配置获取爬虫类
+        
+        Args:
+            site_config: 站点配置
+            
+        Returns:
+            Type[Spider]: 爬虫类
+        """
+        # 根据站点URL或名称选择特定的爬虫类
+        site_url = site_config.url.lower()
+        site_name = site_config.name.lower()
+        
+        if 'artsy.net' in site_url or 'artsy' in site_name:
+            logger.info(f"为站点 {site_config.name} 选择 ArtsySpider")
+            return ArtsySpider
+        elif 'wikiart.org' in site_url or 'wikiart' in site_name:
+            logger.info(f"为站点 {site_config.name} 选择 WikiArtSpider")
+            return WikiArtSpider
+        elif 'gallery' in site_url or 'gallery' in site_name:
+            logger.info(f"为站点 {site_config.name} 选择 ArtGallerySpider")
+            return ArtGallerySpider
+        elif site_config.use_playwright:
+            logger.info(f"为站点 {site_config.name} 选择通用 PlaywrightSpider")
+            return PlaywrightSpider
         else:
-            return BaseSpider(site_config=site_config, job_id=job_id) 
+            logger.info(f"为站点 {site_config.name} 选择通用 BaseSpider")
+            return BaseSpider 
