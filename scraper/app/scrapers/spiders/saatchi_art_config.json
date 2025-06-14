@@ -1,0 +1,39 @@
+{
+  "name": "SaatchiArt",
+  "url": "https://www.saatchiart.com",
+  "description": "Scrape artists and artworks from SaatchiArt website",
+  "requires_login": false,
+  "start_urls": [
+    "https://www.saatchiart.com/artists",
+    "https://www.saatchiart.com/paintings"
+  ],
+  "allowed_domains": [
+    "www.saatchiart.com",
+    "saatchiart.com"
+  ],
+  "use_playwright": true,
+  "config": {
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+    "max_pages": 2,
+    "max_items_per_category": 20,
+    "scroll_delay": 1000,
+    "categories": [
+      {
+        "name": "artists",
+        "url": "https://www.saatchiart.com/artists"
+      },
+      {
+        "name": "paintings",
+        "url": "https://www.saatchiart.com/paintings"
+      },
+      {
+        "name": "photography",
+        "url": "https://www.saatchiart.com/photography"
+      },
+      {
+        "name": "sculpture",
+        "url": "https://www.saatchiart.com/sculpture"
+      }
+    ]
+  }
+} 

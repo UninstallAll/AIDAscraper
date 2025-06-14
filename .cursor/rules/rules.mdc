@@ -7,6 +7,7 @@ alwaysApply: true
 
 [TODOLIST.md](mdc:scraper/TODOLIST.md)，[SYSTEM.md](mdc:scraper/SYSTEM.md), [DESIGN.md](mdc:scraper/DESIGN.md),每次都要阅读这三个文件，然后去检查问题
 
+你继续正常的任务，如果出现了各种原因的停止ai对话，你自行给我修复
 
 如果你觉得差不多了，你就开始测试程序，能不能跑得起来。
 

@@ -12,6 +12,7 @@ from app.scrapers.playwright_spider import PlaywrightSpider
 from app.scrapers.spiders.art_gallery_spider import ArtGallerySpider
 from app.scrapers.spiders.artsy_spider import ArtsySpider
 from app.scrapers.spiders.wikiart_spider import WikiArtSpider
+from app.scrapers.spiders.saatchi_art_spider import SaatchiArtSpider
 from app.utils.logger import get_job_logger
 
 # 设置日志
@@ -90,6 +91,9 @@ class SpiderFactory:
         elif 'gallery' in site_url or 'gallery' in site_name:
             log_func(f"为站点 {site_config.name} 选择 ArtGallerySpider")
             return ArtGallerySpider
+        elif 'saatchiart.com' in site_url or 'saatchi' in site_name:
+            log_func(f"为站点 {site_config.name} 选择 SaatchiArtSpider")
+            return SaatchiArtSpider
         elif site_config.use_playwright:
             log_func(f"为站点 {site_config.name} 选择通用 PlaywrightSpider")
             return PlaywrightSpider

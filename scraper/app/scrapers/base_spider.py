@@ -1,5 +1,5 @@
 """
-基础爬虫类
+Base spider class
 """
 import logging
 from typing import Dict, List, Optional, Any, Union
@@ -15,7 +15,7 @@ from app.scrapers.log_handler import setup_job_logger
 
 class BaseSpider(CrawlSpider):
     """
-    基础爬虫类，所有爬虫都应该继承此类
+    Base spider class that all spiders should inherit from
     """
     name = 'base_spider'
     
@@ -27,58 +27,64 @@ class BaseSpider(CrawlSpider):
         **kwargs
     ):
         """
-        初始化爬虫
+        Initialize the spider
         
         Args:
-            site_config: 站点配置
-            job_id: 任务ID
+            site_config: Site configuration
+            job_id: Job ID
         """
         self.site_config = site_config
         self.job_id = job_id
         
-        # 设置爬虫参数
+        # Set spider parameters
         self.allowed_domains = site_config.allowed_domains
         self.start_urls = site_config.start_urls
         
-        # 设置XPath选择器
+        # Set XPath selectors
         self.list_page_xpath = site_config.list_page_xpath
         self.next_page_xpath = site_config.next_page_xpath
         self.detail_page_xpath = site_config.detail_page_xpath
         self.field_mappings = site_config.field_mappings or {}
         
-        # 设置自定义配置
+        # Set custom configuration
         self.config = site_config.config or {}
         
-        # 调用父类初始化
+        # Call parent initialization
         super().__init__(*args, **kwargs)
         
-        # 设置规则
+        # Set rules
         self._set_rules()
         
-        # 设置日志
+        # Set up logger (changed from property to regular attribute)
+        self._setup_logger()
+    
+    def _setup_logger(self):
+        """
+        Set up the logger for this spider
+        """
         self.logger = logging.getLogger(f"{self.name}_{self.job_id}")
         
-        # 设置任务日志处理器
+        # Set up job logger handler
         if self.job_id:
-            # 根据配置设置日志级别
+            # Set log level based on configuration
             log_level_str = self.config.get('log_level', 'INFO')
             log_level = getattr(logging, log_level_str, logging.INFO)
             setup_job_logger(self.job_id, level=log_level)
-            self.logger.info(f"爬虫 {self.name} 初始化完成，任务ID: {self.job_id}")
+            self.logger.info(f"Spider {self.name} initialized, Job ID: {self.job_id}")
     
     def _set_rules(self):
         """
-        设置爬虫规则
+        Set spider rules
         """
         if self.detail_page_xpath:
             self.rules = (
-                # 提取详情页链接并跟随
+                # Extract detail page links and follow
                 Rule(
                     LinkExtractor(restrict_xpaths=self.detail_page_xpath),
                     callback='parse_item',
                     follow=False
                 ),
-                # 提取下一页链接并跟随
+                # Extract next page links and follow
                 Rule(
                     LinkExtractor(restrict_xpaths=self.next_page_xpath),
                     follow=True
@@ -87,21 +93,21 @@ class BaseSpider(CrawlSpider):
     
     def start_requests(self):
         """
-        开始请求
+        Start requests
         
         Returns:
-            Iterator[Request]: 请求迭代器
+            Iterator[Request]: Request iterator
         """
-        # 设置请求头
+        # Set request headers
         headers = {
             'User-Agent': self.config.get('user_agent', 'Scrapy/2.5.0'),
         }
         
-        self.logger.info(f"开始爬取，起始URL: {self.start_urls}")
+        self.logger.info(f"Starting crawl, start URLs: {self.start_urls}")
         
-        # 如果需要登录，先执行登录
+        # If login is required, execute login first
         if self.site_config.requires_login:
-            self.logger.info(f"站点需要登录，登录URL: {self.site_config.login_url}")
+            self.logger.info(f"Site requires login, login URL: {self.site_config.login_url}")
             yield scrapy.FormRequest(
                 url=self.site_config.login_url,
                 method='POST',
@@ -113,58 +119,58 @@ class BaseSpider(CrawlSpider):
                 callback=self._after_login
             )
         else:
-            # 否则直接开始爬取
+            # Otherwise start crawling directly
             for url in self.start_urls:
-                self.logger.info(f"请求URL: {url}")
+                self.logger.info(f"Request URL: {url}")
                 yield scrapy.Request(url=url, headers=headers)
     
     def _after_login(self, response):
         """
-        登录后的回调函数
+        Callback after login
         
         Args:
-            response: 登录响应
+            response: Login response
             
         Returns:
-            Iterator[Request]: 请求迭代器
+            Iterator[Request]: Request iterator
         """
-        # 检查登录是否成功
-        # 注意：实际实现应该根据具体站点检查登录状态
-        self.logger.info(f"登录完成，状态码: {response.status}，开始爬取")
+        # Check if login was successful
+        # Note: Actual implementation should check login status based on the specific site
+        self.logger.info(f"Login completed, status code: {response.status}, starting crawl")
         
-        # 开始爬取
+        # Start crawling
         for url in self.start_urls:
-            self.logger.info(f"请求URL: {url}")
+            self.logger.info(f"Request URL: {url}")
             yield scrapy.Request(url=url)
     
     def parse_item(self, response):
         """
-        解析详情页
+        Parse detail page
         
         Args:
-            response: 响应对象
+            response: Response object
             
         Returns:
-            Dict[str, Any]: 解析结果
+            Dict[str, Any]: Parse result
         """
-        self.logger.info(f"解析详情页: {response.url}")
+        self.logger.info(f"Parsing detail page: {response.url}")
         
         item = {}
         
-        # 使用字段映射提取数据
+        # Extract data using field mappings
         for field, xpath in self.field_mappings.items():
             value = response.xpath(xpath).get()
             if value:
                 item[field] = value.strip()
-                self.logger.debug(f"提取字段 {field}: {value[:50]}...")
+                self.logger.debug(f"Extracted field {field}: {value[:50]}...")
             else:
-                self.logger.warning(f"字段 {field} 未找到匹配内容，XPath: {xpath}")
+                self.logger.warning(f"Field {field} not found, XPath: {xpath}")
         
-        # 添加元数据
+        # Add metadata
         item['url'] = response.url
         item['site_id'] = self.site_config.id
         item['job_id'] = self.job_id
         item['tenant_id'] = self.site_config.tenant_id
         
-        self.logger.info(f"解析完成，提取到 {len(item) - 4} 个字段")
+        self.logger.info(f"Parsing completed, extracted {len(item) - 4} fields")
         return item 

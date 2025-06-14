@@ -1,0 +1,15 @@
+C:\Program Files\Python312\Lib\site-packages\pydantic\_internal\_config.py:373: UserWarning: Valid config keys have changed in V2:
+* 'orm_mode' has been renamed to 'from_attributes'
+  warnings.warn(message, UserWarning)
+INFO:__main__:\u6570\u636e\u5e93\u8868\u5df2\u521b\u5efa
+INFO:__main__:\u7ad9\u70b9\u914d\u7f6e\u5df2\u521b\u5efa: SaatchiArt
+INFO:__main__:\u4efb\u52a1\u5df2\u521b\u5efa: SaatchiArt Demo Job
+ERROR:__main__:E2E\u6f14\u793a\u5931\u8d25: 'dict' object has no attribute 'status'
+Traceback (most recent call last):
+  File "I:\Mine_\Artistic_Works\2025 AIDA\AIDAscraper\scraper\e2e_demo.py", line 181, in run_e2e_demo
+    job = services.job.update_status(
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "I:\Mine_\Artistic_Works\2025 AIDA\AIDAscraper\scraper\app\services\job.py", line 137, in update_status
+    if status_update.status:
+       ^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'dict' object has no attribute 'status'

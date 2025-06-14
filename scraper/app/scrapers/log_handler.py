@@ -5,7 +5,46 @@ Scrapy日志处理器
 import logging
 from typing import Optional
 
-from scrapy.utils.log import LogFormatter
+# 创建自定义LogFormatter，不再从scrapy.utils.log导入
+class LogFormatter(logging.Formatter):
+    """
+    自定义日志格式化器，模仿Scrapy的LogFormatter
+    """
+    def __init__(self, fmt=None, datefmt=None):
+        """
+        初始化格式化器
+        """
+        logging.Formatter.__init__(self, fmt, datefmt)
+    
+    def format(self, record):
+        """
+        格式化日志记录
+        
+        Args:
+            record: 日志记录
+            
+        Returns:
+            str: 格式化后的日志
+        """
+        # 获取原始消息
+        message = record.getMessage()
+        
+        # 添加日志级别前缀
+        if record.levelno == logging.DEBUG:
+            prefix = "DEBUG"
+        elif record.levelno == logging.INFO:
+            prefix = "INFO"
+        elif record.levelno == logging.WARNING:
+            prefix = "WARNING"
+        elif record.levelno == logging.ERROR:
+            prefix = "ERROR"
+        elif record.levelno == logging.CRITICAL:
+            prefix = "CRITICAL"
+        else:
+            prefix = "UNKNOWN"
+        
+        # 返回格式化后的消息
+        return f"[{prefix}] {message}"
 
 from app.utils.logger import get_job_logger
 

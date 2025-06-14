@@ -1,0 +1,19 @@
+# AIDA Scraper Automated Command List
+# Format: command timeout_seconds(optional, default 60s)
+
+# Database initialization
+cd scraper; python start.py --init-db 30
+
+# Start API service (background)
+cd scraper; python start.py --start-api --no-reload 30
+
+# Test spider - different websites
+cd scraper; python e2e_demo.py --config app/scrapers/spiders/example_config.json 120
+cd scraper; python e2e_demo.py --config app/scrapers/spiders/demo_config.json 120
+cd scraper; python e2e_demo.py --config app/scrapers/spiders/saatchi_art_config.json 180
+
+# Start Celery Worker (background)
+cd scraper; python start_worker.py 30
+
+# Test spider tasks
+cd scraper; python -c "from app.tasks.scraper_tasks import run_spider_task; run_spider_task(1, {'max_pages': 2})" 180 

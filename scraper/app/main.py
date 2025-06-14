@@ -1,29 +1,35 @@
 """
-AIDA Scraper 主应用程序
+Main FastAPI application
 """
 import logging
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 
-from app.api.routes import auth, sites, jobs, search
+from fastapi import FastAPI
+from fastapi.responses import JSONResponse
+from starlette.middleware.cors import CORSMiddleware
+
+from app.api.api import api_router
 from app.core.config import settings
 
-# 设置日志
-logging.basicConfig(level=logging.INFO)
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler("app.log")
+    ]
+)
 logger = logging.getLogger(__name__)
 
-# 创建FastAPI应用
+# Create FastAPI app
 app = FastAPI(
     title=settings.PROJECT_NAME,
-    description="艺术家与策展人生态信息采集与分析平台",
-    version="0.1.0",
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
-    docs_url="/docs",
-    redoc_url="/redoc",
+    description="API for AIDA Scraper - Web scraping and data analysis for art research",
+    version="0.1.0",
 )
 
-# 配置CORS
+# Set up CORS
 if settings.BACKEND_CORS_ORIGINS:
     app.add_middleware(
         CORSMiddleware,
@@ -33,38 +39,42 @@ if settings.BACKEND_CORS_ORIGINS:
         allow_headers=["*"],
     )
 
-# 注册路由
-app.include_router(auth.router, prefix=settings.API_V1_STR, tags=["认证"])
-app.include_router(sites.router, prefix=settings.API_V1_STR, tags=["站点配置"])
-app.include_router(jobs.router, prefix=settings.API_V1_STR, tags=["爬虫任务"])
-app.include_router(search.router, prefix=settings.API_V1_STR, tags=["搜索"])
+# Include API router
+app.include_router(api_router, prefix=settings.API_V1_STR)
 
 
-@app.get("/", tags=["状态"])
-async def root():
+@app.get("/")
+def root():
     """
-    根路径，返回API状态
+    Root endpoint
     """
-    return {"status": "ok", "message": "AIDA Scraper API 正在运行"}
+    return {
+        "message": "Welcome to AIDA Scraper API",
+        "docs_url": "/docs",
+        "version": "0.1.0"
+    }
 
 
-@app.get("/health", tags=["状态"])
-async def health():
+@app.get("/health")
+def health_check():
     """
-    健康检查
+    Health check endpoint
     """
-    return {"status": "healthy"}
+    return {
+        "status": "ok",
+        "api": "running"
+    }
 
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
     """
-    全局异常处理器
+    Global exception handler
     """
-    logger.error(f"全局异常: {exc}", exc_info=True)
+    logger.error(f"Global exception: {exc}", exc_info=True)
     return JSONResponse(
         status_code=500,
-        content={"detail": "服务器内部错误"},
+        content={"detail": "Internal server error"},
     )
 
 if __name__ == "__main__":

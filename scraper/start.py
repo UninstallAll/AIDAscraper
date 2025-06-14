@@ -1,61 +1,82 @@
 #!/usr/bin/env python
 """
-AIDA Scraper 启动脚本
+AIDA Scraper Startup Script
 """
 import argparse
 import logging
-import os
 import sys
 import uvicorn
 
-from app.db.init_db import create_tables, init_db
-from app.db.database import SessionLocal
-
-# 设置日志
-logging.basicConfig(level=logging.INFO)
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler("scraper.log")
+    ]
+)
 logger = logging.getLogger(__name__)
 
+# Import after logging is configured
+from app.db.database import Base, engine
 
-def init_database():
-    """初始化数据库"""
-    logger.info("初始化数据库")
-    create_tables()
-    
-    db = SessionLocal()
+def initialize_database():
+    """
+    Initialize the database by creating all tables
+    """
     try:
-        init_db(db)
-    finally:
-        db.close()
+        Base.metadata.create_all(bind=engine)
+        logger.info("Database initialized successfully")
+    except Exception as e:
+        logger.error(f"Error initializing database: {e}")
+        sys.exit(1)
+
+
+def start_api_server(host="0.0.0.0", port=8000, reload=True):
+    """
+    Start the FastAPI server
     
-    logger.info("数据库初始化完成")
-
-
-def start_api(host="0.0.0.0", port=8000, reload=True):
-    """启动API服务"""
-    logger.info(f"启动API服务 - http://{host}:{port}")
-    uvicorn.run("app.main:app", host=host, port=port, reload=reload)
+    Args:
+        host (str): Host to bind the server to
+        port (int): Port to bind the server to
+        reload (bool): Whether to enable auto-reload
+    """
+    logger.info(f"Starting API server at http://{host}:{port}")
+    uvicorn.run(
+        "app.main:app",
+        host=host,
+        port=port,
+        reload=reload,
+        log_level="info"
+    )
 
 
 def main():
-    """主函数"""
-    parser = argparse.ArgumentParser(description="AIDA Scraper 启动脚本")
-    parser.add_argument("--init-db", action="store_true", help="初始化数据库")
-    parser.add_argument("--start-api", action="store_true", help="启动API服务")
-    parser.add_argument("--host", default="0.0.0.0", help="API服务主机")
-    parser.add_argument("--port", type=int, default=8000, help="API服务端口")
-    parser.add_argument("--no-reload", action="store_true", help="禁用热重载")
+    """
+    Main function to parse arguments and execute commands
+    """
+    parser = argparse.ArgumentParser(description="AIDA Scraper Startup Script")
+    parser.add_argument("--init-db", action="store_true", help="Initialize the database")
+    parser.add_argument("--start-api", action="store_true", help="Start the API server")
+    parser.add_argument("--host", default="0.0.0.0", help="Host to bind the API server to")
+    parser.add_argument("--port", type=int, default=8000, help="Port to bind the API server to")
+    parser.add_argument("--no-reload", action="store_true", help="Disable auto-reload for the API server")
     
     args = parser.parse_args()
     
     if args.init_db:
-        init_database()
+        initialize_database()
     
     if args.start_api:
-        start_api(host=args.host, port=args.port, reload=not args.no_reload)
+        start_api_server(
+            host=args.host,
+            port=args.port,
+            reload=not args.no_reload
+        )
     
     if not (args.init_db or args.start_api):
         parser.print_help()
-        sys.exit(1)
 
 
 if __name__ == "__main__":
