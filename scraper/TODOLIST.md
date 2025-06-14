@@ -15,15 +15,15 @@
 ## Sprint 1 – 核心爬虫原型 (2 周)
 | # | Task | Owner | Status | Est (d) | Note |
 | - | ---- | ----- | ------ | ------- | ---- |
-| 1 | 初始化 Git 仓库 & CI 流水线 | DevOps | PENDING | 1 | GitHub Actions 模板 |
-| 2 | 设置 Docker Compose 基础服务 | DevOps | PENDING | 1 | postgres, redis, minio |
-| 3 | FastAPI 项目脚手架 | Backend | PENDING | 1 | 生成 OpenAPI |
-| 4 | 用户 & 认证模型 | Backend | PENDING | 2 | OAuth2 Password |
-| 5 | SiteConfig 表 & CRUD API | Backend | PENDING | 2 | Pydantic Schema |
-| 6 | Vue3 UI – 登录/仪表盘 | Frontend | PENDING | 2 | Element Plus 布局 |
-| 7 | Scrapy 爬虫基类 & Pipeline | Backend | PENDING | 3 | 本地磁盘输出 JSON |
-| 8 | Playwright 集成示例 Spider | Backend | PENDING | 2 | 登录 + 动态加载 |
-| 9 | Celery Worker & Job 队列 | Backend | PENDING | 1 | 支持失败重试 |
+| 1 | 初始化 Git 仓库 & CI 流水线 | DevOps | DONE | 1 | GitHub Actions 模板 |
+| 2 | 设置 Docker Compose 基础服务 | DevOps | DONE | 1 | postgres, redis, minio |
+| 3 | FastAPI 项目脚手架 | Backend | DONE | 1 | 生成 OpenAPI |
+| 4 | 用户 & 认证模型 | Backend | DONE | 2 | OAuth2 Password |
+| 5 | SiteConfig 表 & CRUD API | Backend | DONE | 2 | Pydantic Schema |
+| 6 | Vue3 UI – 登录/仪表盘 | Frontend | DONE | 2 | Element Plus 布局 |
+| 7 | Scrapy 爬虫基类 & Pipeline | Backend | DONE | 3 | 本地磁盘输出 JSON |
+| 8 | Playwright 集成示例 Spider | Backend | DONE | 2 | 登录 + 动态加载 |
+| 9 | Celery Worker & Job 队列 | Backend | DONE | 1 | 支持失败重试 |
 | 10 | E2E Demo：抓取 1 个站点并写 DB | Team | PENDING | 2 | 成功数据行 > 50 |
 
 ## Sprint 2 – 管理 UI & 任务监控 (2 周)

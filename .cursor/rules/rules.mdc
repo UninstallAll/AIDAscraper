@@ -1,0 +1,16 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+[TODOLIST.md](mdc:scraper/TODOLIST.md)，[SYSTEM.md](mdc:scraper/SYSTEM.md), [DESIGN.md](mdc:scraper/DESIGN.md),每次都要阅读这三个文件，然后去检查问题
+
+如果我的命令执行超过30秒没有响应，你就取消当前命令并尝试其他方法。
+如果我的命令执行超过30秒没有响应，你就取消当前命令并尝试其他方法。
+在每次执行命令前，评估该命令可能的执行时间。
+对于可能耗时较长的命令，建议使用command_timeout.ps1脚本执行。
+如果命令执行时间超过60秒，请自动终止并提示我使用替代方案。
+对于Windows环境，避免使用Unix风格命令，改用PowerShell兼容命令。
+
+
+你要自己在阶段性的进行git。

@@ -1,0 +1,37 @@
+# FastAPI相关
+fastapi>=0.95.0
+uvicorn>=0.21.1
+pydantic>=2.4.0
+pydantic-settings>=2.0.0
+email-validator>=2.0.0
+
+# 数据库相关
+sqlalchemy>=2.0.9
+psycopg2-binary>=2.9.6
+alembic>=1.10.3
+
+# 安全相关
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+python-multipart>=0.0.6
+
+# 爬虫相关
+scrapy>=2.8.0
+playwright>=1.32.1
+scrapy-playwright>=0.0.26
+
+# 异步任务
+celery>=5.2.7
+redis>=4.5.4
+
+# 搜索引擎
+elasticsearch>=8.7.0
+
+# 工具
+python-dotenv>=1.0.0
+tenacity>=8.2.2
+httpx>=0.24.0
+
+# 测试
+pytest>=7.3.1
+pytest-cov>=4.1.0 

@@ -1,0 +1,131 @@
+version: '3.8'
+
+services:
+  # API服务
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: aida-scraper-api
+    container_name: aida-scraper-api
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - ./:/app/
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - aida-network
+    restart: unless-stopped
+
+  # Celery Worker
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: aida-scraper-worker
+    container_name: aida-scraper-worker
+    command: celery -A app.core.celery_app worker --loglevel=info
+    volumes:
+      - ./:/app/
+    env_file:
+      - .env
+    depends_on:
+      - api
+      - redis
+    networks:
+      - aida-network
+    restart: unless-stopped
+
+  # Celery Beat (定时任务)
+  beat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: aida-scraper-beat
+    container_name: aida-scraper-beat
+    command: celery -A app.core.celery_app beat --loglevel=info
+    volumes:
+      - ./:/app/
+    env_file:
+      - .env
+    depends_on:
+      - api
+      - redis
+    networks:
+      - aida-network
+    restart: unless-stopped
+
+  # PostgreSQL数据库
+  postgres:
+    image: postgres:15-alpine
+    container_name: aida-postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-password}
+      - POSTGRES_DB=${POSTGRES_DB:-aida_scraper}
+    ports:
+      - "5432:5432"
+    networks:
+      - aida-network
+    restart: unless-stopped
+
+  # Redis缓存与消息队列
+  redis:
+    image: redis:7-alpine
+    container_name: aida-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - aida-network
+    restart: unless-stopped
+
+  # Elasticsearch搜索引擎
+  elasticsearch:
+    image: elasticsearch:8.7.0
+    container_name: aida-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - xpack.security.enabled=false
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    networks:
+      - aida-network
+    restart: unless-stopped
+
+  # MinIO对象存储
+  minio:
+    image: minio/minio:latest
+    container_name: aida-minio
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ACCESS_KEY:-minioadmin}
+      - MINIO_ROOT_PASSWORD=${MINIO_SECRET_KEY:-minioadmin}
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - aida-network
+    restart: unless-stopped
+
+networks:
+  aida-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  elasticsearch_data:
+  minio_data: 

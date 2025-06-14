@@ -1,0 +1,26 @@
+{
+  "name": "Artsy爬虫示例配置",
+  "url": "https://www.artsy.net",
+  "description": "爬取Artsy网站的艺术家、展览和艺术品信息",
+  "requires_login": true,
+  "login_url": "https://www.artsy.net/login",
+  "login_username_field": "email",
+  "login_password_field": "password",
+  "login_username": "example@example.com",
+  "login_password": "your_password_here",
+  "start_urls": [
+    "https://www.artsy.net/artists",
+    "https://www.artsy.net/shows"
+  ],
+  "allowed_domains": [
+    "www.artsy.net",
+    "artsy.net"
+  ],
+  "use_playwright": true,
+  "config": {
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+    "max_pages": 5,
+    "max_items_per_category": 100,
+    "scroll_delay": 2000
+  }
+} 
