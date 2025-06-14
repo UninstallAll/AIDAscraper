@@ -10,6 +10,7 @@ from scrapy.linkextractors import LinkExtractor
 from scrapy.spiders import CrawlSpider, Rule
 
 from app.models.site import SiteConfig
+from app.scrapers.log_handler import setup_job_logger
 
 
 class BaseSpider(CrawlSpider):
@@ -56,6 +57,14 @@ class BaseSpider(CrawlSpider):
         
         # 设置日志
         self.logger = logging.getLogger(f"{self.name}_{self.job_id}")
+        
+        # 设置任务日志处理器
+        if self.job_id:
+            # 根据配置设置日志级别
+            log_level_str = self.config.get('log_level', 'INFO')
+            log_level = getattr(logging, log_level_str, logging.INFO)
+            setup_job_logger(self.job_id, level=log_level)
+            self.logger.info(f"爬虫 {self.name} 初始化完成，任务ID: {self.job_id}")
     
     def _set_rules(self):
         """
@@ -88,8 +97,11 @@ class BaseSpider(CrawlSpider):
             'User-Agent': self.config.get('user_agent', 'Scrapy/2.5.0'),
         }
         
+        self.logger.info(f"开始爬取，起始URL: {self.start_urls}")
+        
         # 如果需要登录，先执行登录
         if self.site_config.requires_login:
+            self.logger.info(f"站点需要登录，登录URL: {self.site_config.login_url}")
             yield scrapy.FormRequest(
                 url=self.site_config.login_url,
                 method='POST',
@@ -103,6 +115,7 @@ class BaseSpider(CrawlSpider):
         else:
             # 否则直接开始爬取
             for url in self.start_urls:
+                self.logger.info(f"请求URL: {url}")
                 yield scrapy.Request(url=url, headers=headers)
     
     def _after_login(self, response):
@@ -117,10 +130,11 @@ class BaseSpider(CrawlSpider):
         """
         # 检查登录是否成功
         # 注意：实际实现应该根据具体站点检查登录状态
-        self.logger.info("登录完成，开始爬取")
+        self.logger.info(f"登录完成，状态码: {response.status}，开始爬取")
         
         # 开始爬取
         for url in self.start_urls:
+            self.logger.info(f"请求URL: {url}")
             yield scrapy.Request(url=url)
     
     def parse_item(self, response):
@@ -133,6 +147,8 @@ class BaseSpider(CrawlSpider):
         Returns:
             Dict[str, Any]: 解析结果
         """
+        self.logger.info(f"解析详情页: {response.url}")
+        
         item = {}
         
         # 使用字段映射提取数据
@@ -140,6 +156,9 @@ class BaseSpider(CrawlSpider):
             value = response.xpath(xpath).get()
             if value:
                 item[field] = value.strip()
+                self.logger.debug(f"提取字段 {field}: {value[:50]}...")
+            else:
+                self.logger.warning(f"字段 {field} 未找到匹配内容，XPath: {xpath}")
         
         # 添加元数据
         item['url'] = response.url
@@ -147,4 +166,5 @@ class BaseSpider(CrawlSpider):
         item['job_id'] = self.job_id
         item['tenant_id'] = self.site_config.tenant_id
         
+        self.logger.info(f"解析完成，提取到 {len(item) - 4} 个字段")
         return item 

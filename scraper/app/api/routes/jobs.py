@@ -1,14 +1,16 @@
 """
 爬虫任务相关的API路由
 """
-from typing import Any, List
+from typing import Any, List, Optional
+import uuid
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect
 from sqlalchemy.orm import Session
 
 from app import models, schemas, services
 from app.api import deps
 from app.db.database import get_db
+from app.core.websocket_manager import manager
 
 router = APIRouter()
 
@@ -141,4 +143,127 @@ def delete_job(
     
     # 删除任务
     job = services.job.delete(db, job_id=job_id)
+    return job
+
+
+@router.get("/jobs/{job_id}/logs", response_model=List[schemas.JobLog])
+def read_job_logs(
+    *,
+    db: Session = Depends(get_db),
+    job_id: int,
+    skip: int = 0,
+    limit: int = 100,
+    level: Optional[str] = None,
+    current_user: models.User = Depends(deps.get_current_active_user),
+) -> Any:
+    """
+    获取任务日志
+    """
+    # 检查任务是否存在
+    job = services.job.get(db, job_id=job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    
+    # 检查租户权限
+    if job.tenant_id != current_user.tenant_id:
+        raise HTTPException(status_code=403, detail="没有访问权限")
+    
+    # 获取日志
+    logs = services.job_log.get_multi(
+        db, job_id=job_id, skip=skip, limit=limit, level=level
+    )
+    return logs
+
+
+@router.websocket("/ws/jobs/{job_id}/logs")
+async def websocket_job_logs(
+    websocket: WebSocket,
+    job_id: int,
+    token: str = None,
+):
+    """
+    WebSocket端点，用于实时获取任务日志
+    """
+    # 这里可以添加认证逻辑，但为了简单起见，我们暂时不做认证
+    # 在实际生产环境中，应该验证token并检查用户权限
+    
+    # 生成客户端ID
+    client_id = str(uuid.uuid4())
+    
+    # 接受WebSocket连接
+    await manager.connect(websocket, job_id, client_id)
+    
+    try:
+        # 发送初始消息
+        await websocket.send_json({
+            "type": "connection_established",
+            "message": "已连接到任务日志WebSocket",
+            "job_id": job_id
+        })
+        
+        # 等待消息
+        while True:
+            # 接收客户端消息（心跳检测等）
+            data = await websocket.receive_text()
+            if data == "ping":
+                await websocket.send_json({"type": "pong"})
+    except WebSocketDisconnect:
+        # 客户端断开连接
+        manager.disconnect(job_id, client_id)
+    except Exception as e:
+        # 其他异常
+        manager.disconnect(job_id, client_id)
+
+
+@router.post("/jobs/{job_id}/start", response_model=schemas.Job)
+def start_job(
+    *,
+    db: Session = Depends(get_db),
+    job_id: int,
+    current_user: models.User = Depends(deps.get_current_active_user),
+) -> Any:
+    """
+    启动任务
+    """
+    job = services.job.get(db, job_id=job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    
+    # 检查租户权限
+    if job.tenant_id != current_user.tenant_id:
+        raise HTTPException(status_code=403, detail="没有访问权限")
+    
+    # 检查任务状态
+    if job.status not in ["pending", "failed", "cancelled"]:
+        raise HTTPException(status_code=400, detail=f"任务状态为 {job.status}，无法启动")
+    
+    # 启动任务
+    job = services.job.start_job(db, job_id=job_id)
+    return job
+
+
+@router.post("/jobs/{job_id}/cancel", response_model=schemas.Job)
+def cancel_job(
+    *,
+    db: Session = Depends(get_db),
+    job_id: int,
+    current_user: models.User = Depends(deps.get_current_active_user),
+) -> Any:
+    """
+    取消任务
+    """
+    job = services.job.get(db, job_id=job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    
+    # 检查租户权限
+    if job.tenant_id != current_user.tenant_id:
+        raise HTTPException(status_code=403, detail="没有访问权限")
+    
+    # 检查任务状态
+    if job.status not in ["pending", "running"]:
+        raise HTTPException(status_code=400, detail=f"任务状态为 {job.status}，无法取消")
+    
+    # 取消任务
+    job = services.job.cancel_job(db, job_id=job_id)
     return job 

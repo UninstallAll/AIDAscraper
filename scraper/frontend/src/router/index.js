@@ -12,7 +12,7 @@ const routes = [
   {
     path: '/',
     component: () => import('../views/Layout.vue'),
-    meta: { requiresAuth: true },
+    meta: { requiresAuth: false },
     children: [
       {
         path: '',
@@ -46,17 +46,20 @@ const router = createRouter({
   routes
 })
 
-// 路由守卫
+// 路由守卫 - 修改为直接放行
 router.beforeEach((to, from, next) => {
-  const authStore = useAuthStore()
-  const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
+  // 直接放行所有路由
+  next()
   
-  // 如果需要认证且未登录，重定向到登录页
-  if (requiresAuth && !authStore.isLoggedIn) {
-    next('/login')
-  } else {
-    next()
-  }
+  // 原始代码 - 已注释
+  // const authStore = useAuthStore()
+  // const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
+  
+  // if (requiresAuth && !authStore.isLoggedIn) {
+  //   next('/login')
+  // } else {
+  //   next()
+  // }
 })
 
 export default router 

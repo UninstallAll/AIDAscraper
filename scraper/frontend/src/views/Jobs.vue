@@ -8,25 +8,56 @@
       </el-button>
     </div>
     
+    <div class="filters">
+      <el-select v-model="filterStatus" placeholder="状态筛选" clearable style="width: 120px">
+        <el-option label="全部" value="" />
+        <el-option label="待处理" value="pending" />
+        <el-option label="运行中" value="running" />
+        <el-option label="已完成" value="completed" />
+        <el-option label="失败" value="failed" />
+        <el-option label="已取消" value="cancelled" />
+      </el-select>
+      
+      <el-select 
+        v-model="filterSite" 
+        placeholder="站点筛选" 
+        clearable 
+        filterable
+        style="width: 200px; margin-left: 10px"
+      >
+        <el-option label="全部" value="" />
+        <el-option
+          v-for="site in sites"
+          :key="site.id"
+          :label="site.name"
+          :value="site.id"
+        />
+      </el-select>
+      
+      <el-button type="primary" plain @click="fetchJobs(1)" style="margin-left: 10px">
+        筛选
+      </el-button>
+    </div>
+    
     <el-table :data="jobs" v-loading="loading" style="width: 100%">
-      <el-table-column prop="name" label="任务名称" />
-      <el-table-column prop="site_config.name" label="站点" />
-      <el-table-column prop="status" label="状态">
+      <el-table-column prop="name" label="任务名称" min-width="180" />
+      <el-table-column prop="site_config.name" label="站点" min-width="120" />
+      <el-table-column prop="status" label="状态" width="100">
         <template #default="scope">
           <el-tag :type="getStatusType(scope.row.status)">
             {{ scope.row.status }}
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="progress" label="进度">
+      <el-table-column label="进度" min-width="280">
         <template #default="scope">
-          <el-progress :percentage="scope.row.progress" />
+          <job-progress :job="scope.row" :text-inside="true" :show-stats="false" />
         </template>
       </el-table-column>
-      <el-table-column prop="items_scraped" label="已抓取" />
-      <el-table-column prop="items_saved" label="已保存" />
-      <el-table-column prop="created_at" label="创建时间" />
-      <el-table-column label="操作" width="180">
+      <el-table-column prop="items_scraped" label="已抓取" width="100" align="center" />
+      <el-table-column prop="items_saved" label="已保存" width="100" align="center" />
+      <el-table-column prop="created_at" label="创建时间" width="180" />
+      <el-table-column label="操作" width="220" fixed="right">
         <template #default="scope">
           <el-button 
             size="small" 
@@ -58,12 +89,55 @@
         @current-change="handlePageChange"
       />
     </div>
+    
+    <!-- 任务创建对话框 -->
+    <job-create-dialog
+      v-model:visible="createDialogVisible"
+      :site-id="selectedSiteId"
+      @created="handleJobCreated"
+    />
+    
+    <!-- 任务详情对话框 -->
+    <job-detail-dialog
+      v-model:visible="detailDialogVisible"
+      :job-id="selectedJobId"
+    />
+    
+    <!-- 确认对话框 -->
+    <el-dialog
+      v-model="confirmDialogVisible"
+      :title="confirmDialogTitle"
+      width="30%"
+    >
+      <span>{{ confirmDialogMessage }}</span>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="confirmDialogVisible = false">取消</el-button>
+          <el-button 
+            :type="confirmDialogType" 
+            @click="confirmAction" 
+            :loading="confirmLoading"
+          >
+            确定
+          </el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import apiClient from '../api/config'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { useRoute } from 'vue-router'
+import { ElMessage } from 'element-plus'
+import JobProgress from '../components/JobProgress.vue'
+import JobDetailDialog from '../components/JobDetailDialog.vue'
+import JobCreateDialog from '../components/JobCreateDialog.vue'
+import * as jobApi from '../api/job'
+import * as siteApi from '../api/site'
+
+// 路由
+const route = useRoute()
 
 // 任务列表
 const jobs = ref([])
@@ -72,19 +146,49 @@ const total = ref(0)
 const pageSize = ref(10)
 const currentPage = ref(1)
 
+// 站点列表
+const sites = ref([])
+
+// 筛选条件
+const filterStatus = ref('')
+const filterSite = ref('')
+
+// 对话框状态
+const createDialogVisible = ref(false)
+const detailDialogVisible = ref(false)
+const confirmDialogVisible = ref(false)
+const confirmDialogTitle = ref('')
+const confirmDialogMessage = ref('')
+const confirmDialogType = ref('primary')
+const confirmLoading = ref(false)
+const selectedJobId = ref(null)
+const selectedSiteId = ref(null)
+let confirmCallback = null
+
+// 自动刷新定时器
+let refreshTimer = null
+
 // 获取任务列表
 const fetchJobs = async (page = 1) => {
   loading.value = true
   try {
-    const response = await apiClient.get('/jobs', {
-      params: {
-        skip: (page - 1) * pageSize.value,
-        limit: pageSize.value
-      }
-    })
-    jobs.value = response.data
-    // 假设总数通过响应头或其他方式获取
-    total.value = 100 // 示例值
+    const params = {
+      skip: (page - 1) * pageSize.value,
+      limit: pageSize.value
+    }
+    
+    // 添加筛选条件
+    if (filterStatus.value) {
+      params.status = filterStatus.value
+    }
+    
+    if (filterSite.value) {
+      params.site_config_id = filterSite.value
+    }
+    
+    const response = await jobApi.getJobs(params)
+    jobs.value = response.data.items || response.data
+    total.value = response.data.total || response.data.length
   } catch (error) {
     console.error('获取任务列表失败', error)
     // 模拟数据
@@ -130,9 +234,25 @@ const fetchJobs = async (page = 1) => {
         created_at: '2023-10-16 10:00:00'
       }
     ]
-    total.value = 4
+    total.value = jobs.value.length
   } finally {
     loading.value = false
+  }
+}
+
+// 获取站点列表
+const fetchSites = async () => {
+  try {
+    const response = await siteApi.getSites({ limit: 100 })
+    sites.value = response.data.items || response.data
+  } catch (error) {
+    console.error('获取站点列表失败', error)
+    // 模拟数据
+    sites.value = [
+      { id: 1, name: '艺术网站1' },
+      { id: 2, name: '艺术网站2' },
+      { id: 3, name: '艺术网站3' }
+    ]
   }
 }
 
@@ -164,29 +284,116 @@ const canCancel = (status) => {
   return ['pending', 'running'].includes(status)
 }
 
-// 创建任务对话框
+// 打开创建任务对话框
 const openAddDialog = () => {
-  // 实际项目中这里应该打开一个对话框
-  console.log('打开创建任务对话框')
+  selectedSiteId.value = filterSite.value || null
+  createDialogVisible.value = true
 }
 
 // 启动任务
 const startJob = (job) => {
-  console.log('启动任务', job)
+  confirmDialogTitle.value = '启动任务'
+  confirmDialogMessage.value = `确定要启动任务 "${job.name}" 吗？`
+  confirmDialogType.value = 'primary'
+  confirmDialogVisible.value = true
+  confirmCallback = async () => {
+    confirmLoading.value = true
+    try {
+      await jobApi.startJob(job.id)
+      ElMessage.success('任务启动成功')
+      fetchJobs(currentPage.value)
+    } catch (error) {
+      console.error('启动任务失败', error)
+      ElMessage.error('启动任务失败')
+    } finally {
+      confirmLoading.value = false
+      confirmDialogVisible.value = false
+    }
+  }
 }
 
 // 取消任务
 const cancelJob = (job) => {
-  console.log('取消任务', job)
+  confirmDialogTitle.value = '取消任务'
+  confirmDialogMessage.value = `确定要取消任务 "${job.name}" 吗？`
+  confirmDialogType.value = 'danger'
+  confirmDialogVisible.value = true
+  confirmCallback = async () => {
+    confirmLoading.value = true
+    try {
+      await jobApi.cancelJob(job.id)
+      ElMessage.success('任务取消成功')
+      fetchJobs(currentPage.value)
+    } catch (error) {
+      console.error('取消任务失败', error)
+      ElMessage.error('取消任务失败')
+    } finally {
+      confirmLoading.value = false
+      confirmDialogVisible.value = false
+    }
+  }
 }
 
 // 查看任务详情
 const viewDetails = (job) => {
-  console.log('查看任务详情', job)
+  selectedJobId.value = job.id
+  detailDialogVisible.value = true
+}
+
+// 确认对话框操作
+const confirmAction = () => {
+  if (confirmCallback) {
+    confirmCallback()
+  }
+}
+
+// 处理任务创建成功
+const handleJobCreated = (job) => {
+  ElMessage.success('任务创建成功')
+  fetchJobs(1)
+}
+
+// 启动自动刷新
+const startAutoRefresh = () => {
+  stopAutoRefresh()
+  refreshTimer = setInterval(() => {
+    // 只有当有运行中的任务时才自动刷新
+    const hasRunningJobs = jobs.value.some(job => job.status === 'running')
+    if (hasRunningJobs) {
+      fetchJobs(currentPage.value)
+    }
+  }, 10000) // 每10秒刷新一次
+}
+
+// 停止自动刷新
+const stopAutoRefresh = () => {
+  if (refreshTimer) {
+    clearInterval(refreshTimer)
+    refreshTimer = null
+  }
+}
+
+// 检查URL参数
+const checkUrlParams = () => {
+  if (route.query.site_id) {
+    filterSite.value = route.query.site_id
+  }
+  
+  if (route.query.action === 'create') {
+    selectedSiteId.value = route.query.site_id || null
+    createDialogVisible.value = true
+  }
 }
 
 onMounted(() => {
   fetchJobs()
+  fetchSites()
+  checkUrlParams()
+  startAutoRefresh()
+})
+
+onBeforeUnmount(() => {
+  stopAutoRefresh()
 })
 </script>
 
@@ -202,8 +409,19 @@ onMounted(() => {
   margin-bottom: 20px;
 }
 
+.filters {
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+}
+
 .pagination {
   margin-top: 20px;
   text-align: right;
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
 }
 </style> 

@@ -43,6 +43,18 @@ HTTPCACHE_IGNORE_HTTP_CODES = [401, 403, 404, 500, 502, 503, 504]
 # 日志设置
 LOG_LEVEL = 'INFO'
 LOG_FORMAT = '%(asctime)s [%(name)s] %(levelname)s: %(message)s'
+LOG_DATEFORMAT = '%Y-%m-%d %H:%M:%S'
+LOG_STDOUT = False
+LOG_FILE = None  # 不使用默认文件日志，我们使用自定义的JobLogger
+
+# 禁用默认的日志配置，使用我们自己的日志处理器
+LOG_ENABLED = True
+LOG_ENCODING = 'utf-8'
+
+# 扩展设置
+EXTENSIONS = {
+    'scrapy.extensions.logstats.LogStats': None,  # 禁用默认的日志统计
+}
 
 # Playwright设置
 PLAYWRIGHT_LAUNCH_OPTIONS = {
@@ -53,4 +65,7 @@ PLAYWRIGHT_LAUNCH_OPTIONS = {
 PLAYWRIGHT_DEFAULT_NAVIGATION_TIMEOUT = 30000
 
 # 输出目录
-OUTPUT_DIR = 'output' 
+OUTPUT_DIR = 'output'
+
+# 错误处理
+DOWNLOAD_FAIL_ON_DATALOSS = False 

@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     POSTGRES_PASSWORD: str = "password"
     POSTGRES_DB: str = "aida_scraper"
     DATABASE_URL: Optional[str] = None
+    USE_SQLITE: bool = True  # 默认使用SQLite
 
     @model_validator(mode="after")
     def assemble_db_connection(self) -> "Settings":
@@ -43,8 +44,14 @@ class Settings(BaseSettings):
         if env_db_url:
             self.DATABASE_URL = env_db_url
         elif not self.DATABASE_URL:
-            # 如果环境变量中没有，且对象中也没有，则构建一个PostgreSQL URL
-            self.DATABASE_URL = f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}/{self.POSTGRES_DB}"
+            # 如果环境变量中没有，且对象中也没有
+            if self.USE_SQLITE:
+                # 使用SQLite
+                db_file = os.path.abspath(os.path.join(os.path.dirname(__file__), "../..", "aida_scraper.db"))
+                self.DATABASE_URL = f"sqlite:///{db_file}"
+            else:
+                # 使用PostgreSQL
+                self.DATABASE_URL = f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}/{self.POSTGRES_DB}"
         return self
 
     # Redis配置

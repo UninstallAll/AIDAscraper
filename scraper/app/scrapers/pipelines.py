@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.db.database import SessionLocal
 from app import services
+from app.utils.logger import get_job_logger
 
 
 class JsonWriterPipeline:
@@ -27,6 +28,7 @@ class JsonWriterPipeline:
         self.output_dir = output_dir
         self.items = []
         self.logger = logging.getLogger(__name__)
+        self.job_logger = None
     
     @classmethod
     def from_crawler(cls, crawler):
@@ -52,7 +54,14 @@ class JsonWriterPipeline:
         """
         # 确保输出目录存在
         os.makedirs(self.output_dir, exist_ok=True)
-        self.logger.info(f"JsonWriterPipeline启动，输出目录: {self.output_dir}")
+        
+        # 获取任务日志记录器
+        job_id = getattr(spider, "job_id", None)
+        if job_id:
+            self.job_logger = get_job_logger(job_id)
+            self.job_logger.info(f"JsonWriterPipeline启动，输出目录: {self.output_dir}")
+        else:
+            self.logger.info(f"JsonWriterPipeline启动，输出目录: {self.output_dir}")
     
     def process_item(self, item: Dict[str, Any], spider):
         """
@@ -66,6 +75,11 @@ class JsonWriterPipeline:
             Dict[str, Any]: 处理后的数据项
         """
         self.items.append(dict(item))
+        
+        # 记录处理项目日志
+        if self.job_logger and len(self.items) % 10 == 0:  # 每10条记录一次
+            self.job_logger.debug(f"已处理 {len(self.items)} 条数据")
+        
         return item
     
     def close_spider(self, spider):
@@ -80,7 +94,11 @@ class JsonWriterPipeline:
         with open(output_file, "w", encoding="utf-8") as f:
             json.dump(self.items, f, ensure_ascii=False, indent=2)
         
-        self.logger.info(f"爬取完成，共写入 {len(self.items)} 条数据到 {output_file}")
+        # 记录完成日志
+        if self.job_logger:
+            self.job_logger.info(f"爬取完成，共写入 {len(self.items)} 条数据到 {output_file}")
+        else:
+            self.logger.info(f"爬取完成，共写入 {len(self.items)} 条数据到 {output_file}")
 
 
 class DatabasePipeline:
@@ -97,7 +115,9 @@ class DatabasePipeline:
         self.site_config_id = None
         self.tenant_id = None
         self.items_count = 0
+        self.items_failed = 0
         self.logger = logging.getLogger(__name__)
+        self.job_logger = None
     
     @classmethod
     def from_crawler(cls, crawler):
@@ -127,11 +147,21 @@ class DatabasePipeline:
         self.site_config_id = getattr(spider, "site_config", None).id
         self.tenant_id = getattr(spider, "site_config", None).tenant_id
         
+        # 获取任务日志记录器
+        if self.job_id:
+            self.job_logger = get_job_logger(self.job_id)
+        
         if not self.job_id or not self.site_config_id or not self.tenant_id:
-            self.logger.error("缺少必要的任务ID、站点配置ID或租户ID，无法写入数据库")
+            if self.job_logger:
+                self.job_logger.error("缺少必要的任务ID、站点配置ID或租户ID，无法写入数据库")
+            else:
+                self.logger.error("缺少必要的任务ID、站点配置ID或租户ID，无法写入数据库")
             return
         
-        self.logger.info(f"DatabasePipeline启动，任务ID: {self.job_id}, 站点配置ID: {self.site_config_id}")
+        if self.job_logger:
+            self.job_logger.info(f"DatabasePipeline启动，任务ID: {self.job_id}, 站点配置ID: {self.site_config_id}")
+        else:
+            self.logger.info(f"DatabasePipeline启动，任务ID: {self.job_id}, 站点配置ID: {self.site_config_id}")
     
     def process_item(self, item: Dict[str, Any], spider):
         """
@@ -160,6 +190,10 @@ class DatabasePipeline:
             elif "biography" in item:
                 content = item["biography"]
             
+            # 记录处理日志
+            if self.job_logger:
+                self.job_logger.debug(f"处理数据项: {title or url}, 类型: {page_type}")
+            
             # 创建或更新数据项
             db_item = services.scraped_item.create_or_update(
                 db=self.db,
@@ -182,13 +216,24 @@ class DatabasePipeline:
                     job_id=self.job_id,
                     status_update={
                         "items_scraped": self.items_count,
-                        "items_saved": self.items_count
+                        "items_saved": self.items_count,
+                        "items_failed": self.items_failed
                     }
                 )
+                
+                if self.job_logger:
+                    self.job_logger.info(f"进度更新: 已处理 {self.items_count} 条数据，失败 {self.items_failed} 条")
             
             return item
         except Exception as e:
-            self.logger.exception(f"写入数据库失败: {e}")
+            self.items_failed += 1
+            
+            error_msg = f"写入数据库失败: {e}"
+            if self.job_logger:
+                self.job_logger.error(error_msg)
+            else:
+                self.logger.exception(error_msg)
+            
             return item
     
     def close_spider(self, spider):
@@ -206,12 +251,21 @@ class DatabasePipeline:
                     job_id=self.job_id,
                     status_update={
                         "items_scraped": self.items_count,
-                        "items_saved": self.items_count
+                        "items_saved": self.items_count,
+                        "items_failed": self.items_failed
                     }
                 )
                 
-                self.logger.info(f"爬取完成，共写入 {self.items_count} 条数据到数据库")
+                completion_msg = f"爬取完成，共写入 {self.items_count} 条数据到数据库，失败 {self.items_failed} 条"
+                if self.job_logger:
+                    self.job_logger.info(completion_msg)
+                else:
+                    self.logger.info(completion_msg)
             except Exception as e:
-                self.logger.exception(f"更新任务状态失败: {e}")
+                error_msg = f"更新任务状态失败: {e}"
+                if self.job_logger:
+                    self.job_logger.error(error_msg)
+                else:
+                    self.logger.exception(error_msg)
             finally:
                 self.db.close() 

@@ -5,7 +5,7 @@ from sqlalchemy import Boolean, Column, Integer, String, DateTime, JSON, Foreign
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 
-from app.db.database import Base
+from app.db.base_class import Base
 
 
 class Job(Base):
@@ -34,6 +34,7 @@ class Job(Base):
     # 关系
     site_config = relationship("SiteConfig", backref="jobs")
     created_by = relationship("User", backref="jobs")
+    logs = relationship("JobLog", back_populates="job", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<Job {self.name} ({self.status})>" 

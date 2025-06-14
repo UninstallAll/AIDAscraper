@@ -4,7 +4,7 @@
 from sqlalchemy import Boolean, Column, Integer, String, DateTime, JSON
 from sqlalchemy.sql import func
 
-from app.db.database import Base
+from app.db.base_class import Base
 
 
 class SiteConfig(Base):

@@ -45,12 +45,42 @@
         @current-change="handlePageChange"
       />
     </div>
+
+    <!-- 站点配置对话框 -->
+    <site-config-dialog
+      v-model:visible="dialogVisible"
+      :site-data="currentSite"
+      :is-edit="isEdit"
+      @created="handleSiteCreated"
+      @updated="handleSiteUpdated"
+    />
+
+    <!-- 删除确认对话框 -->
+    <el-dialog
+      v-model="deleteDialogVisible"
+      title="确认删除"
+      width="30%"
+    >
+      <span>确定要删除站点 "{{ currentSite.name }}" 吗？此操作不可恢复。</span>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="deleteDialogVisible = false">取消</el-button>
+          <el-button type="danger" @click="confirmDelete" :loading="deleteLoading">确定</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import apiClient from '../api/config'
+import { ref, reactive, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import SiteConfigDialog from '../components/SiteConfigDialog.vue'
+import * as siteApi from '../api/site'
+
+// 路由
+const router = useRouter()
 
 // 站点列表
 const sites = ref([])
@@ -59,19 +89,23 @@ const total = ref(0)
 const pageSize = ref(10)
 const currentPage = ref(1)
 
+// 对话框状态
+const dialogVisible = ref(false)
+const deleteDialogVisible = ref(false)
+const deleteLoading = ref(false)
+const isEdit = ref(false)
+const currentSite = ref({})
+
 // 获取站点列表
 const fetchSites = async (page = 1) => {
   loading.value = true
   try {
-    const response = await apiClient.get('/sites', {
-      params: {
-        skip: (page - 1) * pageSize.value,
-        limit: pageSize.value
-      }
+    const response = await siteApi.getSites({
+      skip: (page - 1) * pageSize.value,
+      limit: pageSize.value
     })
-    sites.value = response.data
-    // 假设总数通过响应头或其他方式获取
-    total.value = 100 // 示例值
+    sites.value = response.data.items || response.data
+    total.value = response.data.total || response.data.length
   } catch (error) {
     console.error('获取站点列表失败', error)
     // 模拟数据
@@ -93,7 +127,7 @@ const fetchSites = async (page = 1) => {
         use_playwright: false
       }
     ]
-    total.value = 2
+    total.value = sites.value.length
   } finally {
     loading.value = false
   }
@@ -105,25 +139,64 @@ const handlePageChange = (page) => {
   fetchSites(page)
 }
 
-// 添加站点对话框
+// 打开添加站点对话框
 const openAddDialog = () => {
-  // 实际项目中这里应该打开一个对话框
-  console.log('打开添加站点对话框')
+  isEdit.value = false
+  currentSite.value = {}
+  dialogVisible.value = true
 }
 
 // 编辑站点
 const editSite = (site) => {
-  console.log('编辑站点', site)
+  isEdit.value = true
+  currentSite.value = {...site}
+  dialogVisible.value = true
 }
 
 // 创建任务
 const createJob = (site) => {
-  console.log('创建任务', site)
+  router.push({
+    name: 'Jobs',
+    query: { 
+      site_id: site.id,
+      site_name: site.name,
+      action: 'create'
+    }
+  })
 }
 
 // 删除站点
 const deleteSite = (site) => {
-  console.log('删除站点', site)
+  currentSite.value = site
+  deleteDialogVisible.value = true
+}
+
+// 确认删除
+const confirmDelete = async () => {
+  deleteLoading.value = true
+  try {
+    await siteApi.deleteSite(currentSite.value.id)
+    ElMessage.success('站点删除成功')
+    fetchSites(currentPage.value)
+    deleteDialogVisible.value = false
+  } catch (error) {
+    console.error('删除站点失败', error)
+    ElMessage.error(error.response?.data?.detail || '删除站点失败')
+  } finally {
+    deleteLoading.value = false
+  }
+}
+
+// 处理站点创建成功
+const handleSiteCreated = () => {
+  fetchSites(currentPage.value)
+  ElMessage.success('站点创建成功')
+}
+
+// 处理站点更新成功
+const handleSiteUpdated = () => {
+  fetchSites(currentPage.value)
+  ElMessage.success('站点更新成功')
 }
 
 onMounted(() => {
@@ -146,5 +219,10 @@ onMounted(() => {
 .pagination {
   margin-top: 20px;
   text-align: right;
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
 }
 </style> 

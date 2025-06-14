@@ -6,7 +6,9 @@ from sqlalchemy.orm import Session
 
 from app import models, schemas, services
 from app.core.config import settings
-from app.db.database import Base, engine
+# 导入base而不是直接导入Base和engine
+from app.db.base import Base
+from app.db.database import engine
 
 # 设置日志
 logging.basicConfig(level=logging.INFO)

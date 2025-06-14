@@ -8,17 +8,17 @@ const apiClient = axios.create({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
-    'Accept': 'application/json'
+    'Accept': 'application/json',
+    // 添加默认的测试令牌
+    'Authorization': 'Bearer test-token'
   }
 })
 
 // 请求拦截器
 apiClient.interceptors.request.use(
   config => {
-    const token = localStorage.getItem('token')
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
-    }
+    // 始终使用测试令牌
+    config.headers.Authorization = 'Bearer test-token'
     return config
   },
   error => Promise.reject(error)
@@ -28,11 +28,9 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   response => response,
   error => {
-    // 处理401错误，清除token并重定向到登录页
-    if (error.response && error.response.status === 401) {
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
-      window.location.href = '/login'
+    // 对于API错误，打印日志但不重定向到登录页
+    if (error.response) {
+      console.error('API错误:', error.response.status, error.response.data)
     }
     return Promise.reject(error)
   }

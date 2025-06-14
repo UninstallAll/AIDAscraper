@@ -36,8 +36,11 @@ class PlaywrightSpider(BaseSpider):
             'timeout': self.config.get('timeout', 30000),
         }
         
+        self.logger.info(f"使用Playwright爬虫开始请求，站点: {self.site_config.name}")
+        
         # 如果需要登录，先执行登录
         if self.site_config.requires_login:
+            self.logger.info(f"站点需要登录，使用Playwright处理登录页面: {self.site_config.login_url}")
             yield scrapy.Request(
                 url=self.site_config.login_url,
                 headers=headers,
@@ -54,6 +57,7 @@ class PlaywrightSpider(BaseSpider):
         else:
             # 否则直接开始爬取
             for url in self.start_urls:
+                self.logger.info(f"请求URL (使用Playwright): {url}")
                 yield scrapy.Request(
                     url=url,
                     headers=headers,
@@ -79,23 +83,31 @@ class PlaywrightSpider(BaseSpider):
         page = response.meta['playwright_page']
         
         try:
+            self.logger.info(f"开始处理登录表单，URL: {response.url}")
+            
             # 填写登录表单
             await page.fill(f"input[name='{self.site_config.login_username_field}']", self.site_config.login_username)
-            await page.fill(f"input[name='{self.site_config.login_password_field}']", self.site_config.login_password)
+            self.logger.debug(f"已填写用户名字段: {self.site_config.login_username_field}")
+            
+            await page.fill(f"input[name='{self.site_config.login_password_field}']", "********")  # 不记录实际密码
+            self.logger.debug(f"已填写密码字段: {self.site_config.login_password_field}")
             
             # 点击登录按钮（假设是第一个类型为submit的按钮）
+            self.logger.info("点击登录按钮")
             await page.click("input[type='submit']")
             
             # 等待登录完成
+            self.logger.info("等待登录完成...")
             await page.wait_for_navigation()
             
             # 关闭页面
             await page.close()
             
-            self.logger.info("登录完成，开始爬取")
+            self.logger.info("登录成功，开始爬取内容页面")
             
             # 开始爬取
             for url in self.start_urls:
+                self.logger.info(f"请求内容页面: {url}")
                 yield scrapy.Request(
                     url=url,
                     meta={
@@ -108,6 +120,13 @@ class PlaywrightSpider(BaseSpider):
                 )
         except Exception as e:
             self.logger.error(f"登录失败: {e}")
+            # 尝试截图记录错误
+            try:
+                screenshot_path = f"error_login_{self.job_id}.png"
+                await page.screenshot(path=screenshot_path)
+                self.logger.info(f"错误截图已保存到: {screenshot_path}")
+            except Exception as screenshot_error:
+                self.logger.error(f"保存错误截图失败: {screenshot_error}")
             await page.close()
     
     async def parse_with_playwright(self, response):
@@ -123,29 +142,42 @@ class PlaywrightSpider(BaseSpider):
         page = response.meta['playwright_page']
         
         try:
+            self.logger.info(f"使用Playwright解析页面: {response.url}")
+            
             # 等待内容加载
             if self.list_page_xpath:
+                self.logger.info(f"等待选择器加载: {self.list_page_xpath}")
                 await page.wait_for_selector(self.list_page_xpath)
+                self.logger.debug("选择器加载完成")
             
             # 获取页面内容
+            self.logger.debug("获取页面内容")
             html_content = await page.content()
             
             # 创建新的响应对象，包含JavaScript渲染后的内容
             new_response = response.replace(body=html_content.encode('utf-8'))
+            self.logger.debug(f"页面内容大小: {len(html_content)} 字节")
             
             # 关闭页面
             await page.close()
             
             # 使用基类的解析方法
+            self.logger.info("开始解析页面内容")
+            items_count = 0
             for item in self.parse_item(new_response):
+                items_count += 1
                 yield item
+            
+            self.logger.info(f"页面解析完成，提取到 {items_count} 个项目")
             
             # 提取下一页链接
             if self.next_page_xpath:
                 next_page = new_response.xpath(self.next_page_xpath).get()
                 if next_page:
+                    next_url = response.urljoin(next_page)
+                    self.logger.info(f"找到下一页链接: {next_url}")
                     yield scrapy.Request(
-                        url=response.urljoin(next_page),
+                        url=next_url,
                         meta={
                             'playwright': True,
                             'playwright_include_page': True,
@@ -154,8 +186,17 @@ class PlaywrightSpider(BaseSpider):
                         },
                         callback=self.parse_with_playwright
                     )
+                else:
+                    self.logger.info("没有找到下一页链接，爬取结束")
         except Exception as e:
             self.logger.error(f"解析失败: {e}")
+            # 尝试截图记录错误
+            try:
+                screenshot_path = f"error_parse_{self.job_id}_{response.url.split('/')[-1]}.png"
+                await page.screenshot(path=screenshot_path)
+                self.logger.info(f"错误截图已保存到: {screenshot_path}")
+            except Exception as screenshot_error:
+                self.logger.error(f"保存错误截图失败: {screenshot_error}")
             await page.close()
     
     async def errback(self, failure):
@@ -167,9 +208,17 @@ class PlaywrightSpider(BaseSpider):
         """
         page = failure.request.meta.get('playwright_page')
         if page:
+            self.logger.error(f"请求失败: {failure.request.url}")
+            # 尝试截图记录错误
+            try:
+                screenshot_path = f"error_request_{self.job_id}.png"
+                await page.screenshot(path=screenshot_path)
+                self.logger.info(f"错误截图已保存到: {screenshot_path}")
+            except Exception as screenshot_error:
+                self.logger.error(f"保存错误截图失败: {screenshot_error}")
             await page.close()
         
-        self.logger.error(f"请求失败: {failure.value}")
+        self.logger.error(f"请求失败详情: {failure.value}")
         
     def parse_item(self, response):
         """

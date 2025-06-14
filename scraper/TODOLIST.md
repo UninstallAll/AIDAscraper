@@ -28,10 +28,10 @@
 
 ## Sprint 2 – 管理 UI & 任务监控 (2 周)
 | # | Task | Owner | Status | Est (d) |
-| 1 | 前端站点配置表单 (JSON Schema) | Frontend | PENDING | 2 |
-| 2 | 任务列表 & 进度条组件 | Frontend | PENDING | 2 |
-| 3 | Worker 日志 WebSocket 推送 | Backend | PENDING | 2 |
-| 4 | Scrapy 日志格式化 & 存储 | Backend | PENDING | 2 |
+| 1 | 前端站点配置表单 (JSON Schema) | Frontend | DONE | 2 |
+| 2 | 任务列表 & 进度条组件 | Frontend | DONE | 2 |
+| 3 | Worker 日志 WebSocket 推送 | Backend | DONE | 2 |
+| 4 | Scrapy 日志格式化 & 存储 | Backend | DONE | 2 |
 | 5 | 功能验收 & 文档 | Team | PENDING | 1 |
 
 ## Sprint 3 – NLP 流水线 & 搜索 (2 周)
