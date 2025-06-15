@@ -1,82 +1,81 @@
 # AIDA Scraper
 
-A comprehensive SaaS platform for collecting and analyzing information about artists and curators across the web.
+AIDA Scraper是一个用于艺术网站数据采集和分析的工具，支持多种艺术网站的数据抓取、存储和分析。
 
-## Overview
+## 快速开始
 
-AIDA Scraper is designed to help researchers, galleries, and educational institutions gather and analyze art-related data from across the internet. The platform offers:
+### 一键启动
 
-- Automated web scraping of art websites using Scrapy and Playwright
-- NLP-driven information extraction and classification
-- Structured data storage and search capabilities
-- Visualization of artist-curator-institution relationships
-- Multi-tenant architecture for team-based research
-
-## Quick Start
-
-### One-Click Startup
-
-To start all components with a single command:
+使用`start_all.bat`脚本可以一键启动所有服务：
 
 ```
-start_all.bat
+.\start_all.bat
 ```
 
-This will:
-1. Initialize the database
-2. Start the API server
-3. Start the Celery worker
-4. Run a test spider for SaatchiArt
+此脚本会自动执行以下操作：
+1. 初始化数据库
+2. 启动API服务器
+3. 启动Celery工作进程
+4. 运行SaatchiArt爬虫测试
 
-### Stop All Services
+### 停止所有服务
 
-To stop all running components:
+使用`stop_all.bat`脚本可以一键停止所有服务：
 
 ```
-stop_all.bat
+.\stop_all.bat
 ```
 
-## Manual Setup
+## 服务访问
 
-### Prerequisites
+- API文档: http://localhost:8000/docs
+- API端点: http://localhost:8000/api/v1/
 
-- Python 3.8+
-- PostgreSQL (optional, SQLite is used by default)
-- Redis (for Celery task queue)
+## 系统架构
 
-### Installation
+AIDA Scraper由以下组件组成：
 
-1. Clone the repository
-2. Install dependencies:
-   ```
-   pip install -r scraper/requirements.txt
-   ```
+1. **API服务器**: 基于FastAPI的RESTful API
+2. **爬虫引擎**: 基于Scrapy的爬虫系统
+3. **任务队列**: 基于Celery的异步任务处理系统
+4. **数据库**: 使用SQLAlchemy ORM的关系型数据库
 
-### Running Components Individually
+## 爬虫配置
 
-1. Initialize the database:
-   ```
-   cd scraper
-   python start.py --init-db
-   ```
+系统支持多种艺术网站的爬虫，包括：
 
-2. Start the API server:
-   ```
-   cd scraper
-   python start.py --start-api
-   ```
+- SaatchiArt: 世界领先的在线艺术画廊
+- Artsy: 艺术品发现和收藏平台
+- WikiArt: 视觉艺术百科全书
+- 各种艺术画廊网站
 
-3. Start the Celery worker:
-   ```
-   cd scraper
-   python start_worker.py
-   ```
+## 手动启动
 
-4. Run a spider:
-   ```
-   cd scraper
-   python run_saatchi_spider.py
-   ```
+如果需要单独启动各个组件，可以使用以下命令：
+
+### 初始化数据库
+```
+cd scraper
+python start.py --init-db
+```
+
+### 启动API服务器
+```
+cd scraper
+python start.py --start-api
+```
+
+### 启动Celery工作进程
+```
+cd scraper
+python start_worker.py
+```
+
+### 运行特定爬虫
+```
+cd scraper
+python run_saatchi_spider.py
+```
 
 ## API Documentation
 

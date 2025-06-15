@@ -22,7 +22,8 @@ class BaseSpider(CrawlSpider):
     def __init__(
         self, 
         site_config: SiteConfig, 
-        job_id: int = None, 
+        job_id: int = None,
+        _job_logger = None,  # Optional pre-configured job logger
         *args, 
         **kwargs
     ):
@@ -32,6 +33,7 @@ class BaseSpider(CrawlSpider):
         Args:
             site_config: Site configuration
             job_id: Job ID
+            _job_logger: Pre-configured job logger (optional)
         """
         self.site_config = site_config
         self.job_id = job_id
@@ -55,22 +57,31 @@ class BaseSpider(CrawlSpider):
         # Set rules
         self._set_rules()
         
-        # Set up logger (changed from property to regular attribute)
-        self._setup_logger()
+        # Set up logger - use provided logger or create a new one
+        self._job_logger = _job_logger
+        if self._job_logger is None:
+            self._setup_logger()
+        else:
+            self._job_logger.info(f"Spider {self.name} initialized with provided logger, Job ID: {self.job_id}")
     
     def _setup_logger(self):
         """
         Set up the logger for this spider
         """
-        self.logger = logging.getLogger(f"{self.name}_{self.job_id}")
-        
-        # Set up job logger handler
         if self.job_id:
             # Set log level based on configuration
             log_level_str = self.config.get('log_level', 'INFO')
             log_level = getattr(logging, log_level_str, logging.INFO)
-            setup_job_logger(self.job_id, level=log_level)
-            self.logger.info(f"Spider {self.name} initialized, Job ID: {self.job_id}")
+            self._job_logger = setup_job_logger(self.job_id, level=log_level)
+            self._job_logger.info(f"Spider {self.name} initialized, Job ID: {self.job_id}")
+        else:
+            self._job_logger = logging.getLogger(f"{self.name}")
+            self._job_logger.info(f"Spider {self.name} initialized without job ID")
+    
+    # Override the logger property to use our custom logger
+    @property
+    def logger(self):
+        return self._job_logger
     
     def _set_rules(self):
         """

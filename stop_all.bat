@@ -14,6 +14,4 @@ echo Stopping Celery workers...
 taskkill /F /IM celery.exe /T >nul 2>&1
 
 echo All services stopped successfully!
-echo.
-echo Press any key to exit
-pause 
+echo. 

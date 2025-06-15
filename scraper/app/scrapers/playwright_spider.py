@@ -1,5 +1,5 @@
 """
-使用Playwright的爬虫类
+Playwright-based spider class
 """
 import logging
 from typing import Dict, List, Optional, Any, Union
@@ -14,33 +14,33 @@ from app.scrapers.base_spider import BaseSpider
 
 class PlaywrightSpider(BaseSpider):
     """
-    使用Playwright的爬虫类，用于处理JavaScript渲染的页面
+    Playwright-based spider class for handling JavaScript-rendered pages
     """
     name = 'playwright_spider'
     
     def start_requests(self):
         """
-        开始请求
+        Start requests
         
         Returns:
-            Iterator[Request]: 请求迭代器
+            Iterator[Request]: Request iterator
         """
-        # 设置请求头
+        # Set request headers
         headers = {
             'User-Agent': self.config.get('user_agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'),
         }
         
-        # 设置Playwright参数
+        # Set Playwright parameters
         playwright_args = {
             'wait_until': 'networkidle',
             'timeout': self.config.get('timeout', 30000),
         }
         
-        self.logger.info(f"使用Playwright爬虫开始请求，站点: {self.site_config.name}")
+        self.logger.info(f"Starting Playwright spider requests, site: {self.site_config.name}")
         
-        # 如果需要登录，先执行登录
+        # If login is required, handle login first
         if self.site_config.requires_login:
-            self.logger.info(f"站点需要登录，使用Playwright处理登录页面: {self.site_config.login_url}")
+            self.logger.info(f"Site requires login, handling login page with Playwright: {self.site_config.login_url}")
             yield scrapy.Request(
                 url=self.site_config.login_url,
                 headers=headers,
@@ -55,9 +55,9 @@ class PlaywrightSpider(BaseSpider):
                 callback=self._handle_login
             )
         else:
-            # 否则直接开始爬取
+            # Otherwise start crawling directly
             for url in self.start_urls:
-                self.logger.info(f"请求URL (使用Playwright): {url}")
+                self.logger.info(f"Request URL (using Playwright): {url}")
                 yield scrapy.Request(
                     url=url,
                     headers=headers,
@@ -72,42 +72,42 @@ class PlaywrightSpider(BaseSpider):
     
     async def _handle_login(self, response):
         """
-        处理登录
+        Handle login
         
         Args:
-            response: 登录页面响应
+            response: Login page response
             
         Returns:
-            Iterator[Request]: 请求迭代器
+            Iterator[Request]: Request iterator
         """
         page = response.meta['playwright_page']
         
         try:
-            self.logger.info(f"开始处理登录表单，URL: {response.url}")
+            self.logger.info(f"Starting to process login form, URL: {response.url}")
             
-            # 填写登录表单
+            # Fill login form
             await page.fill(f"input[name='{self.site_config.login_username_field}']", self.site_config.login_username)
-            self.logger.debug(f"已填写用户名字段: {self.site_config.login_username_field}")
+            self.logger.debug(f"Filled username field: {self.site_config.login_username_field}")
             
-            await page.fill(f"input[name='{self.site_config.login_password_field}']", "********")  # 不记录实际密码
-            self.logger.debug(f"已填写密码字段: {self.site_config.login_password_field}")
+            await page.fill(f"input[name='{self.site_config.login_password_field}']", "********")  # Don't log actual password
+            self.logger.debug(f"Filled password field: {self.site_config.login_password_field}")
             
-            # 点击登录按钮（假设是第一个类型为submit的按钮）
-            self.logger.info("点击登录按钮")
+            # Click login button (assume it's the first submit button)
+            self.logger.info("Clicking login button")
             await page.click("input[type='submit']")
             
-            # 等待登录完成
-            self.logger.info("等待登录完成...")
+            # Wait for login to complete
+            self.logger.info("Waiting for login to complete...")
             await page.wait_for_navigation()
             
-            # 关闭页面
+            # Close page
             await page.close()
             
-            self.logger.info("登录成功，开始爬取内容页面")
+            self.logger.info("Login successful, starting to crawl content pages")
             
-            # 开始爬取
+            # Start crawling
             for url in self.start_urls:
-                self.logger.info(f"请求内容页面: {url}")
+                self.logger.info(f"Request content page: {url}")
                 yield scrapy.Request(
                     url=url,
                     meta={
@@ -119,63 +119,63 @@ class PlaywrightSpider(BaseSpider):
                     callback=self.parse_with_playwright
                 )
         except Exception as e:
-            self.logger.error(f"登录失败: {e}")
-            # 尝试截图记录错误
+            self.logger.error(f"Login failed: {e}")
+            # Try to take a screenshot to record the error
             try:
                 screenshot_path = f"error_login_{self.job_id}.png"
                 await page.screenshot(path=screenshot_path)
-                self.logger.info(f"错误截图已保存到: {screenshot_path}")
+                self.logger.info(f"Error screenshot saved to: {screenshot_path}")
             except Exception as screenshot_error:
-                self.logger.error(f"保存错误截图失败: {screenshot_error}")
+                self.logger.error(f"Failed to save error screenshot: {screenshot_error}")
             await page.close()
     
     async def parse_with_playwright(self, response):
         """
-        使用Playwright解析页面
+        Parse page using Playwright
         
         Args:
-            response: 响应对象
+            response: Response object
             
         Returns:
-            Iterator[Dict[str, Any]]: 解析结果迭代器
+            Iterator[Dict[str, Any]]: Parse result iterator
         """
         page = response.meta['playwright_page']
         
         try:
-            self.logger.info(f"使用Playwright解析页面: {response.url}")
+            self.logger.info(f"Parsing page with Playwright: {response.url}")
             
-            # 等待内容加载
+            # Wait for content to load
             if self.list_page_xpath:
-                self.logger.info(f"等待选择器加载: {self.list_page_xpath}")
+                self.logger.info(f"Waiting for selector to load: {self.list_page_xpath}")
                 await page.wait_for_selector(self.list_page_xpath)
-                self.logger.debug("选择器加载完成")
+                self.logger.debug("Selector loaded")
             
-            # 获取页面内容
-            self.logger.debug("获取页面内容")
+            # Get page content
+            self.logger.debug("Getting page content")
             html_content = await page.content()
             
-            # 创建新的响应对象，包含JavaScript渲染后的内容
+            # Create new response object with JavaScript-rendered content
             new_response = response.replace(body=html_content.encode('utf-8'))
-            self.logger.debug(f"页面内容大小: {len(html_content)} 字节")
+            self.logger.debug(f"Page content size: {len(html_content)} bytes")
             
-            # 关闭页面
+            # Close page
             await page.close()
             
-            # 使用基类的解析方法
-            self.logger.info("开始解析页面内容")
+            # Use base class parsing method
+            self.logger.info("Starting to parse page content")
             items_count = 0
             for item in self.parse_item(new_response):
                 items_count += 1
                 yield item
             
-            self.logger.info(f"页面解析完成，提取到 {items_count} 个项目")
+            self.logger.info(f"Page parsing completed, extracted {items_count} items")
             
-            # 提取下一页链接
+            # Extract next page link
             if self.next_page_xpath:
                 next_page = new_response.xpath(self.next_page_xpath).get()
                 if next_page:
                     next_url = response.urljoin(next_page)
-                    self.logger.info(f"找到下一页链接: {next_url}")
+                    self.logger.info(f"Found next page link: {next_url}")
                     yield scrapy.Request(
                         url=next_url,
                         meta={
@@ -187,48 +187,48 @@ class PlaywrightSpider(BaseSpider):
                         callback=self.parse_with_playwright
                     )
                 else:
-                    self.logger.info("没有找到下一页链接，爬取结束")
+                    self.logger.info("No next page link found, crawling finished")
         except Exception as e:
-            self.logger.error(f"解析失败: {e}")
-            # 尝试截图记录错误
+            self.logger.error(f"Parsing failed: {e}")
+            # Try to take a screenshot to record the error
             try:
                 screenshot_path = f"error_parse_{self.job_id}_{response.url.split('/')[-1]}.png"
                 await page.screenshot(path=screenshot_path)
-                self.logger.info(f"错误截图已保存到: {screenshot_path}")
+                self.logger.info(f"Error screenshot saved to: {screenshot_path}")
             except Exception as screenshot_error:
-                self.logger.error(f"保存错误截图失败: {screenshot_error}")
+                self.logger.error(f"Failed to save error screenshot: {screenshot_error}")
             await page.close()
     
     async def errback(self, failure):
         """
-        错误回调函数
+        Error callback function
         
         Args:
-            failure: 失败对象
+            failure: Failure object
         """
         page = failure.request.meta.get('playwright_page')
         if page:
-            self.logger.error(f"请求失败: {failure.request.url}")
-            # 尝试截图记录错误
+            self.logger.error(f"Request failed: {failure.request.url}")
+            # Try to take a screenshot to record the error
             try:
                 screenshot_path = f"error_request_{self.job_id}.png"
                 await page.screenshot(path=screenshot_path)
-                self.logger.info(f"错误截图已保存到: {screenshot_path}")
+                self.logger.info(f"Error screenshot saved to: {screenshot_path}")
             except Exception as screenshot_error:
-                self.logger.error(f"保存错误截图失败: {screenshot_error}")
+                self.logger.error(f"Failed to save error screenshot: {screenshot_error}")
             await page.close()
         
-        self.logger.error(f"请求失败详情: {failure.value}")
+        self.logger.error(f"Request failure details: {failure.value}")
         
     def parse_item(self, response):
         """
-        解析详情页
+        Parse detail page
         
         Args:
-            response: 响应对象
+            response: Response object
             
         Returns:
-            Dict[str, Any]: 解析结果
+            Dict[str, Any]: Parse result
         """
-        # 使用基类的解析方法
+        # Use base class parsing method
         return super().parse_item(response) 

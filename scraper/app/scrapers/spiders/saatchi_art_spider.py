@@ -11,6 +11,7 @@ from playwright.sync_api import Page
 from scrapy import Selector
 
 from app.scrapers.playwright_spider import PlaywrightSpider
+from app.scrapers.log_handler import setup_job_logger
 
 logger = logging.getLogger(__name__)
 

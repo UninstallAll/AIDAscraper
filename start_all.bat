@@ -12,7 +12,6 @@ where python >nul 2>&1
 if %errorlevel% neq 0 (
     echo Error: Python not found
     echo Please install Python and make sure it's in your PATH
-    pause
     exit /b 1
 )
 
@@ -21,7 +20,6 @@ cd scraper
 python start.py --init-db
 if %errorlevel% neq 0 (
     echo Error: Failed to initialize database
-    pause
     exit /b 1
 )
 echo Database initialized successfully
@@ -45,6 +43,4 @@ echo All components started successfully!
 echo.
 echo API Documentation: http://localhost:8000/docs
 echo API Endpoints: http://localhost:8000/api/v1/
-echo.
-echo Press any key to exit (services will continue running in background)
-pause 
+echo. 

@@ -1,8 +1,13 @@
 {
   "name": "SaatchiArt",
   "url": "https://www.saatchiart.com",
-  "description": "Scrape artists and artworks from SaatchiArt website",
+  "description": "Saatchi Art is the world's leading online art gallery, connecting people with art and artists they love.",
   "requires_login": false,
+  "login_url": "",
+  "login_username_field": "",
+  "login_password_field": "",
+  "login_username": "",
+  "login_password": "",
   "start_urls": [
     "https://www.saatchiart.com/artists",
     "https://www.saatchiart.com/paintings"
@@ -11,6 +16,18 @@
     "www.saatchiart.com",
     "saatchiart.com"
   ],
+  "list_page_xpath": "//div[contains(@class, 'artists-grid')] | //div[contains(@class, 'artworks-grid')]",
+  "next_page_xpath": "//a[contains(@class, 'next-page')]",
+  "detail_page_xpath": "//a[contains(@class, 'artist-link')] | //a[contains(@class, 'artwork-link')]",
+  "field_mappings": {
+    "name": "//h1[contains(@class, 'artist-name')]/text()",
+    "title": "//h1[contains(@class, 'artwork-title')]/text()",
+    "description": "//div[contains(@class, 'artwork-description')]/text()",
+    "price": "//div[contains(@class, 'artwork-price')]/text()",
+    "artist": "//a[contains(@class, 'artwork-artist')]/text()",
+    "medium": "//div[contains(@class, 'artwork-medium')]/text()",
+    "dimensions": "//div[contains(@class, 'artwork-dimensions')]/text()"
+  },
   "use_playwright": true,
   "config": {
     "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
